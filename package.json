@@ -124,6 +124,7 @@
     "extract": "node scripts/extract.mjs",
     "build": "node scripts/extract.mjs && node scripts/build.mjs",
     "check": "node --check lib/client.js && node --check lib/index.js",
+    "audit:leak": "node tools/leak-audit.mjs",
     "prepublishOnly": "node scripts/extract.mjs && node scripts/build.mjs && node --check lib/client.js && node --check lib/index.js"
   },
   "dependencies": {

@@ -37,6 +37,28 @@ node .verify/run-harness.mjs 3499                   # 跑六组探针 + 四张�
 
 截图在 `.verify/shots/`：同样的页面，**有行**时是纯黑首帧，**抽掉行**时 HARNESS 卡片就在那儿。
 
+## 泄漏回归（本地工具，不进 CI）
+
+移植进来的片头会在覆写阶段开好几个窗口，每个窗口的时钟是一条 1s 的 `setInterval`。跳过（Esc / 点击）
+是把整个 shadow root 拆掉，而不是逐个关窗，所以这些 interval 曾经会活到页面结束，顺带把弹窗 DOM 一起
+钉在内存里。`tools/leak-audit.mjs` 就是这条回归的守卫：
+
+```sh
+npm run audit:leak                          # 默认 lib/client.js、完整档、8s 跳过
+node tools/leak-audit.mjs --client lib/client.js --mode full --skip 8000 --settle 3500
+```
+
+它用桩 `window.__ModuleLoader__` + `require('react')` 桩在本地 HTML 里加载**真实的 `lib/client.js`**，
+在 bundle 跑起来**之前**包住 `setInterval`/`clearInterval`（Map 记 id → 调用点栈）和
+`EventTarget.prototype.addEventListener`，8s 时派发一次真的 `Escape`，再等 3.5s 断言**存活 interval = 0**，
+并打印残留调用点。零依赖：Node ≥22 自带 `fetch` / `WebSocket`，Chrome 路径复用
+[`scripts/browsers.mjs`](../scripts/browsers.mjs)（Windows + macOS）。退出码 0 通过、1 失败（含
+"遮罩根本没挂上/没被跳过"这种没意义的运行）。残留 listener 只打印不判定：被拆下来的弹窗本来就还留着自己的
+关闭按钮监听。
+
+**故意不挂进 `npm run check`**：它需要一个浏览器，而上游 CI 只跑 `extract` + `build` + `node --check`，
+把浏览器依赖塞进 `check` 等于让 CI 必挂。改移植代码（尤其 `scripts/extract.mjs` 的 rewrite 列表）时手动跑一次。
+
 ## 真实 GUI
 
 `scripts/verify.mjs` 用 DevTools 协议驱动真实浏览器，可以在**精确时刻**、**指定模式**下截图并读取
