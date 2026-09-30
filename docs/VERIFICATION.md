@@ -59,6 +59,25 @@ node tools/leak-audit.mjs --client lib/client.js --mode full --skip 8000 --settl
 **故意不挂进 `npm run check`**：它需要一个浏览器，而上游 CI 只跑 `extract` + `build` + `node --check`，
 把浏览器依赖塞进 `check` 等于让 CI 必挂。改移植代码（尤其 `scripts/extract.mjs` 的 rewrite 列表）时手动跑一次。
 
+## 无头截图（本地工具，不进 CI）
+
+改动画时间线、移植 CSS、配色或档位时，用它按毫秒看结果，不用起 DSH、不用重启：
+
+```sh
+npm run render:splash                                             # 3000/7000/11000/15000ms 四张
+node tools/render-splash.mjs --shots 1500,7000 --mode full        # 指定时刻与档位
+node tools/render-splash.mjs --escape 3000 --shots 3600           # 跳过后的那一帧
+node tools/render-splash.mjs --client /tmp/other/lib/client.js    # 和别的构建对比
+```
+
+`tools/render-splash.mjs` 用桩 `window.__ModuleLoader__` + `require('react')` 桩把**真实的
+`lib/client.js`** 装进本地 HTML，在无头 Chrome 里跑到指定毫秒截图，PNG 落在 `.render/`（已 gitignore），
+末尾打印一次 `{loaded, storedMode, overlays}` 探针。零依赖，Chrome 路径同样复用
+[`scripts/browsers.mjs`](../scripts/browsers.mjs)。和 `audit:leak` 一样**不挂进 `check`**：CI 没有浏览器。
+
+它只覆盖**客户端半边**——宿主半边（`lib/index.js` 的首帧注入）要真机重启才能看，清单见
+[VERIFY-MACOS.md](VERIFY-MACOS.md)。
+
 ## 真实 GUI
 
 `scripts/verify.mjs` 用 DevTools 协议驱动真实浏览器，可以在**精确时刻**、**指定模式**下截图并读取

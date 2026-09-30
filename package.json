@@ -125,6 +125,7 @@
     "build": "node scripts/extract.mjs && node scripts/build.mjs",
     "check": "node --check lib/client.js && node --check lib/index.js",
     "audit:leak": "node tools/leak-audit.mjs",
+    "render:splash": "node tools/render-splash.mjs",
     "prepublishOnly": "node scripts/extract.mjs && node scripts/build.mjs && node --check lib/client.js && node --check lib/index.js"
   },
   "dependencies": {

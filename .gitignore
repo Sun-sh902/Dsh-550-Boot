@@ -3,6 +3,8 @@ node_modules/
 # 验证脚手架：里面有从 app.asar 取出的 DSH 包文件、浏览器 profile 和一次性截图，
 # 都不该进仓库。对外展示的截图在 docs/。
 .verify/
+# tools/render-splash.mjs 的输出（无头截图 + Chrome profile）
+.render/
 
 *.log
 .DS_Store

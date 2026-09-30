@@ -28,7 +28,10 @@
 ### 什么时候必须再确认一次
 
 - 从**新的上游 tarball** 重新解包（新目录里这行会回到 `'simple'`）；
-- `dsh plugin --profile desktop add dsh-550c-boot`（退回 git 包安装）；
+- `dsh plugin --profile desktop add github:yannicksong0106/dsh-550c-boot`（退回 git 包安装）。
+  这一条要特别小心：**它会把本地改动整套换掉**——包不在 npm 上（`npm view dsh-550c-boot` 是 404），
+  git 包装的是上游那份 `src/client.js`，`DEFAULT_MODE` 会回到 `'simple'`，所以退回去之后必须重新打一遍
+  （改 `src/client.js`，或恢复成本仓库的 `link:` 安装）；
 - 任何"从上游同步 `src/`"的操作。
 
 一行检查：
