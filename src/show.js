@@ -285,7 +285,7 @@ function openWindow(opt){
     el.appendChild(status);
     stage.appendChild(el); activeWindows.push(el);
     const clockEl = status.querySelector(".wp-clock");
-    const clockTimer = setInterval(() => { if (clockEl) clockEl.textContent = nowStr(); }, 1000);
+    const clockTimer = setInterval(() => { if (clockEl === null || !clockEl.isConnected) { clearInterval(clockTimer); return; } clockEl.textContent = nowStr(); }, 1000);
     title.querySelector('[data-act="close"]').addEventListener("click", () => closeSelf());
     requestAnimationFrame(() => el.classList.add("show"));
     if (typeof opt.onMount === "function") opt.onMount(el, body, status);

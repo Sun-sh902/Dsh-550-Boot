@@ -126,6 +126,21 @@ js = js.replace('function startFps(){ setInterval(', 'function startFps(){ fpsTi
 must(js.includes('clockTimer = setInterval('), 'startClock was not tracked')
 must(js.includes('fpsTimer = setInterval('), 'startFps was not tracked')
 
+// 5b. The popup clock ticker has to die with its popup. closeSelf() clears it,
+//     but that is the popup's OWN exit: a skip tears the whole shadow root down
+//     instead (cancel() only stops the intervals the wrapper knows about), so
+//     every window still open at Esc kept ticking — and kept its DOM alive —
+//     for the rest of the page's life (measured: 3 live intervals 29 s after a
+//     skip). Detachment is the one signal the ported code can act on without
+//     knowing anything about the overlay, so the ticker retires itself as soon
+//     as the clock is out of the document — the same idiom the original already
+//     uses for its two other tickers (the waveform bars and the override bar).
+js = js.replace(
+  'const clockTimer = setInterval(() => { if (clockEl) clockEl.textContent = nowStr(); }, 1000);',
+  'const clockTimer = setInterval(() => { if (clockEl === null || !clockEl.isConnected) { clearInterval(clockTimer); return; } clockEl.textContent = nowStr(); }, 1000);',
+)
+must(js.includes('!clockEl.isConnected'), 'the popup clock self-stop was not applied')
+
 // 6. Remove bootUp(): the wrapper's start() owns that sequence and additionally
 //    handles simple mode (where no #app exists) and the end-of-show beat.
 js = js.replace(/async function bootUp\(\)\{[\s\S]*?\n\}\n/, '')
