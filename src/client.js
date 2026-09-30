@@ -377,6 +377,26 @@ function mountOverlay(force) {
   const onKey = (event) => {
     if (event.key === 'Escape') skip()
   }
+  /**
+   * Leaving the page ends the show early.
+   *
+   * Every beat of the show is a timer, and a hidden document gets Chromium's
+   * default throttling (DSH sets no `backgroundThrottling`, verified in
+   * app.asar), so a minimized window stretches 11 s of animation far past the
+   * 30 s watchdog — measured: hide at 1.5 s and the show is still at 0 % when
+   * the watchdog fires at 31.2 s and logs a failure. Nobody is watching a hidden
+   * page, so the honest end is the normal fade, and the watchdog's error path
+   * stops being reachable from there.
+   *
+   * Only a TRANSITION to hidden counts: DSH creates the main window with
+   * `show: false` and calls `show()` after the page has loaded, so the document
+   * is legitimately hidden while the splash mounts — keying off the initial
+   * state would skip the splash in every Desktop launch.
+   */
+  const onVisibility = () => {
+    if (document.hidden) finish()
+  }
+  document.addEventListener('visibilitychange', onVisibility)
   // Idempotent: it is reached through the fade timer, through the plugin's
   // teardown AND, since the preview button can restart a running splash,
   // directly. The second run must not re-run the disposers it already ran.
@@ -390,6 +410,7 @@ function mountOverlay(force) {
     if (record.caption !== null) record.caption()
     host.removeEventListener('click', skip)
     window.removeEventListener('keydown', onKey, true)
+    document.removeEventListener('visibilitychange', onVisibility)
     host.remove()
     if (liveOverlay === record) liveOverlay = null
   }
@@ -412,7 +433,11 @@ function mountOverlay(force) {
   // install: the splash can never outlive its own animation and lock the user
   // out of Settings — which is where the switch that disables it lives.
   record.watchdog = window.setTimeout(() => {
-    console.error('[dsh-550c-boot] watchdog fired; dismissing the splash')
+    // Firing while the document is hidden is not a failure: a background tab
+    // that booted hidden has no visibilitychange to catch, and its timers are
+    // throttled into uselessness. End quietly there, loudly anywhere else.
+    if (document.hidden) console.warn('[dsh-550c-boot] watchdog fired while hidden; dismissing the splash quietly')
+    else console.error('[dsh-550c-boot] watchdog fired; dismissing the splash')
     finish()
   }, mode === 'full' ? 30000 : 12000)
 
