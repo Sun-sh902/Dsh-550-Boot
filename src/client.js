@@ -321,7 +321,17 @@ function adaptCaption(host) {
  * @returns the live overlay record, or null when nothing was mounted
  */
 function mountOverlay(force) {
-  if (liveOverlay !== null) return liveOverlay
+  if (liveOverlay !== null) {
+    // The boot trigger keeps the splash that is already playing. The preview
+    // button means "play it now", so a running splash is torn down first —
+    // synchronously, before the replacement is built, which is what keeps the
+    // document at no more than one .dsh550c-host at any instant. A preview
+    // during the fade-out replays too; that is the button doing its job.
+    if (!force) return liveOverlay
+    const replaced = liveOverlay
+    liveOverlay = null
+    replaced.dispose()
+  }
 
   const stored = readMode()
   if (!force && stored === 'off') return null
@@ -353,7 +363,7 @@ function mountOverlay(force) {
   host.dataset.sawBootCard = String(document.querySelector('[data-dsh-boot]') !== null)
   document.body.appendChild(host)
 
-  const record = { host: host, show: null, enhance: null, caption: null, finished: false, fadeTimer: null, watchdog: null, dispose: null }
+  const record = { host: host, show: null, enhance: null, caption: null, finished: false, disposed: false, fadeTimer: null, watchdog: null, dispose: null }
 
   const skip = () => {
     if (record.show !== null) record.show.cancel()
@@ -361,7 +371,12 @@ function mountOverlay(force) {
   const onKey = (event) => {
     if (event.key === 'Escape') skip()
   }
+  // Idempotent: it is reached through the fade timer, through the plugin's
+  // teardown AND, since the preview button can restart a running splash,
+  // directly. The second run must not re-run the disposers it already ran.
   const dispose = () => {
+    if (record.disposed) return
+    record.disposed = true
     if (record.fadeTimer !== null) window.clearTimeout(record.fadeTimer)
     if (record.watchdog !== null) window.clearTimeout(record.watchdog)
     if (record.show !== null) record.show.cancel()
@@ -373,7 +388,9 @@ function mountOverlay(force) {
     if (liveOverlay === record) liveOverlay = null
   }
   const finish = () => {
-    if (record.finished) return
+    // A disposed record is already gone; its cancel() rejects the show promise,
+    // so this is the normal landing spot for the skip path and must stay quiet.
+    if (record.finished || record.disposed) return
     record.finished = true
     if (record.watchdog !== null) {
       window.clearTimeout(record.watchdog)
