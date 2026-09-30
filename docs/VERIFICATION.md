@@ -92,6 +92,7 @@ node tools/render-splash.mjs --client /tmp/other/lib/client.js    # 和别的构
 | `npm run verify:reduced-motion -- --variant 550w` | reduce 下没存过偏好 → 只播简易档；显式选完整/关闭仍然赢 |
 | `npm run verify:variant-bg` | 宿主半边首帧底色逐机型正确、未知值回退 550C、`end()` 不留痕 |
 | `npm run verify:skip -- --variants 550c,550w --at 3000,9000,15000` | 真 `Esc` 与真点击在各阶段都能 <2s 收场，跳过提示同时消失，焦点不留在遮罩上 |
+| `npm run mock:550w` | 550W 重做（Step 1）的 5 张静态关键帧 → `.render/550w-step1-*.png`；第 1 张挂的是 550C 的真实样式表与 boot markup |
 
 （`--variant` 缺省时用机型注册表的默认值 550C；`render:splash` 还支持 `--scheme` 看配色覆盖。）
 
