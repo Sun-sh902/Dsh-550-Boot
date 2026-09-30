@@ -346,6 +346,12 @@ function mountOverlay(force) {
 
   const host = document.createElement('div')
   host.className = 'dsh550c-host'
+  // Decoration, not content: the port ends up full of fake terminal text
+  // ("550C CORE TERMINAL", log lines, "OVERRIDE CONTROLLER"), and a screen
+  // reader user asked for none of it. The host is a plain div, so aria-hidden
+  // here takes its whole shadow tree out of the accessibility tree (checked with
+  // Accessibility.getFullAXTree) while pointer and keyboard behaviour stay put.
+  host.setAttribute('aria-hidden', 'true')
   // Body-level overlays are subtracted from the macOS draggable region unless
   // they declare otherwise: the marker is what the dsh-web family bundle
   // exempts, ensureDragGuard() is the same exemption for installs without it.
