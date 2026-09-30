@@ -6,14 +6,18 @@
 
 ```
 assets/550C-source.html   原版独立页面（归档，构建的输入）
-scripts/extract.mjs       从原页面提取样式表 / DOM / 脚本 → src/assets.js + src/show.js
-scripts/build.mjs         把四段拼成 lib/client.js（无打包器、无构建依赖）
-src/client.js             手写：遮罩层、通用设置那一行、插件导出
-src/enhance.js            内容增强层：追加样式表 + 观察 stage（含桌面标题栏那两段）
+scripts/extract.mjs       从原页面提取样式表 / DOM / 脚本 → src/variants/550c/ 下的 assets.js + show.js
+scripts/build.mjs         按顺序拼成 lib/client.js（无打包器、无构建依赖）+ 跨半边契约断言
+src/variants/<机型>/       一个机型一套：assets.js（生成）、show.js（生成）、enhance.js、index.js（注册表条目）
+src/variants/registry.js   机型维度：localStorage 键、取值、每机型首帧底色表、解析与回退
+src/client.js             手写：遮罩层、通用设置的三行、插件导出
 lib/client.js             构建产物（浏览器半边，提交进仓库）
 lib/index.js              宿主半边：往 index 注入首帧
 cordis.patch.yml          bundle 补丁：把插件挂进 profile
 ```
+
+机型、档位、配色三个维度是正交的，各自的归属和"某机型没用到某个 token 会怎样"都写在
+[VARIANTS.md](VARIANTS.md)。
 
 ## 为什么是「提取」而不是「重写」
 

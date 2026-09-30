@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Generates src/assets.js and src/show.js from assets/550C-source.html.
+ * Generates the 550C variant's `assets.js` and `show.js` from
+ * assets/550C-source.html.
  *
  * The animation is PORTED MECHANICALLY, never retyped: the original page's
  * stylesheet, markup and script are copied verbatim and then adapted for a
@@ -9,8 +10,10 @@
  * drift from the animation the author actually tuned.
  *
  * Outputs plain top-level `const`/`function` declarations (no import/export):
- * scripts/build.mjs concatenates the generated files with the hand-written
- * src/client.js into the single module the client loader expects.
+ * scripts/build.mjs concatenates the generated files, the variant registry and
+ * the hand-written src/client.js into the single module the client loader
+ * expects. The two outputs are named for the MACHINE they port, not for their
+ * role, so a 550W/550A extractor can sit beside them without a rename.
  *
  * Usage: node scripts/extract.mjs [path/to/550C-source.html]
  */
@@ -257,7 +260,10 @@ const showOut =
   js +
   wrapperTail
 
-for (const [file, text] of [['src/assets.js', assetsOut], ['src/show.js', showOut]]) {
+for (const [file, text] of [
+  ['src/variants/550c/assets.js', assetsOut],
+  ['src/variants/550c/show.js', showOut],
+]) {
   writeFileSync(resolve(root, file), text)
   process.stdout.write(`extract: wrote ${file} (${text.length} chars)\n`)
 }

@@ -5,7 +5,10 @@
  *
  *   the splash            mounted IMPERATIVELY from apply(), not through a slot
  *                         — see mountOverlay() for why that matters
- *   settings.general.item  the 关闭 / 简易 / 完整 row, next to Appearance
+ *   settings.general.item  three rows next to Appearance: 档位 (关闭 / 简易 /
+ *                        完整), 配色 (琥珀 / 绿 / 青 / 白) and 机型 (550C /
+ *                        550W / 550A). They are independent axes — see
+ *                        src/variants/registry.js for what each one owns.
  *
  * The row is a plain React element (createElement, no JSX: the client loader
  * hands this module `require`, and `react` is one of the externals it resolves —
@@ -336,6 +339,10 @@ function mountOverlay(force) {
   const stored = readMode()
   if (!force && stored === 'off') return null
   const mode = stored === 'full' ? 'full' : 'simple'
+  // Which machine plays. Unknown/stored-junk resolves to 550C (see the registry),
+  // so an older profile — or one hand-edited while debugging — keeps playing
+  // exactly what it played before this dimension existed.
+  const variant = resolveVariant(readVariant())
 
   if (document.body === null) {
     // The factory can be evaluated while the document is still parsing; the
@@ -364,6 +371,15 @@ function mountOverlay(force) {
   // Recorded for the stylesheet: only the full mode mounts #hud-top, and the
   // caption strip's fill has to match whichever surface is at the top.
   host.dataset.mode = mode
+  // Which machine is on screen. The variant's own stylesheet keys off this for
+  // anything machine-specific that the palette tokens do not cover.
+  host.dataset.variant = variant.id
+  // The splash paints its own backdrop, and the host half painted the cover that
+  // it replaces — from the same table, so the hand-off is one colour. Set inline
+  // rather than left to the machine's stylesheet: VARIANT_BG is the single source
+  // the build asserts against, and a machine whose CSS forgot its --bg would
+  // otherwise flash the default.
+  host.style.setProperty('--bg', VARIANT_BG[variant.id])
   // Recorded before anything else: did the splash beat DSH's own boot card to
   // the screen? (Read by scripts/verify.mjs.)
   host.dataset.sawBootCard = String(document.querySelector('[data-dsh-boot]') !== null)
@@ -439,12 +455,12 @@ function mountOverlay(force) {
     if (document.hidden) console.warn('[dsh-550c-boot] watchdog fired while hidden; dismissing the splash quietly')
     else console.error('[dsh-550c-boot] watchdog fired; dismissing the splash')
     finish()
-  }, mode === 'full' ? 30000 : 12000)
+  }, variant.watchdogMs[mode])
 
   try {
     const shadow = host.attachShadow({ mode: 'open' })
     const style = document.createElement('style')
-    style.textContent = HOST_CSS + CSS_550C
+    style.textContent = HOST_CSS + variant.css
     shadow.appendChild(style)
 
     const stage = document.createElement('div')
@@ -460,19 +476,21 @@ function mountOverlay(force) {
     // gesture — an inert subtree is not a hit target, so those clicks fall through
     // to the host, which is exactly where the skip listener lives.
     stage.setAttribute('inert', '')
-    stage.innerHTML = mode === 'full' ? BOOT_MARKUP + APP_MARKUP : BOOT_MARKUP
+    // Full mode adds the machine's live surface; a machine with no app surface
+    // (variant.app === null) plays its boot stage in both modes.
+    stage.innerHTML = mode === 'full' && variant.app !== null ? variant.boot + variant.app : variant.boot
     shadow.appendChild(stage)
 
     // Content upgrades (terminal texture, self-consistent data, panel depth)
     // live outside the ported code, so re-extracting never loses them.
-    record.enhance = enhanceShow(stage, { mode: mode })
+    record.enhance = variant.enhance(stage, { mode: mode })
 
     // After enhanceShow: `--caption-fill` / `--caption-symbol` are defined by the
     // enhancement sheet, so reading them any earlier silently falls back to the
     // built-in default and the strip keeps the wrong colour for the whole splash.
     record.caption = adaptCaption(host)
 
-    record.show = createShow(stage, { mode: mode, cancelled: CANCELLED })
+    record.show = variant.show(stage, { mode: mode, cancelled: CANCELLED })
     host.addEventListener('click', skip)
     window.addEventListener('keydown', onKey, true)
     record.show.start().then(finish, finish)
@@ -608,7 +626,67 @@ function SchemeRow() {
 }
 
 /**
- * Mount both surfaces.
+ * The machine row: which 片头 plays.
+ *
+ * Same shape as the other two rows, and orthogonal to them: it picks the machine
+ * (its own markup, stylesheet, timeline and default palette), the 档位 row picks
+ * how much of it plays, and the 配色 row overrides the palette on top. Switching
+ * a machine does NOT play anything — only 预览 (on either row) does.
+ *
+ * A machine with no timeline of its own yet still appears here and still plays:
+ * it falls back to the skeleton until its own phase lands, which is what the
+ * description says out loud.
+ */
+function VariantRow() {
+  const [variant, setVariant] = React.useState(readVariant)
+
+  React.useEffect(() => {
+    ensureRowStyle()
+  }, [])
+
+  const choose = React.useCallback((next) => {
+    writeVariant(next)
+    setVariant(next)
+  }, [])
+
+  return React.createElement(
+    'div',
+    { className: 'dsh550c-row' },
+    React.createElement(
+      'div',
+      { className: 'dsh550c-row-text' },
+      React.createElement('div', { className: 'dsh550c-row-title' }, '片头机型'),
+      React.createElement(
+        'div',
+        { className: 'dsh550c-row-desc' },
+        '选哪台机器开机。550C 是原作；550W 与 550A 目前共用这套骨架，各自的片头随后续版本展开。',
+      ),
+    ),
+    React.createElement(
+      'div',
+      { className: 'dsh550c-row-ctrl' },
+      React.createElement(
+        'div',
+        { className: 'dsh550c-seg' },
+        variantList().map((entry) =>
+          React.createElement(
+            'button',
+            {
+              key: entry.id,
+              type: 'button',
+              className: variant === entry.id ? 'on' : '',
+              onClick: () => choose(entry.id),
+            },
+            entry.label,
+          ),
+        ),
+      ),
+    ),
+  )
+}
+
+/**
+ * Mount all four surfaces.
  *
  * Slot names are inlined as literals on purpose: the injector's pre-flight
  * check reads register() calls statically and cannot follow a constant.
@@ -621,6 +699,11 @@ function apply(ctx) {
   )
   ctx.slots.inject('settings.general.item', () =>
     ctx.slots.register({ name: 'settings.general.item', id: 'boot-550c-scheme', order: 27 }, SchemeRow),
+  )
+  // 28, not 25: the two shipped rows keep the ids and orders installed profiles
+  // already have, and the machine row reads naturally after 档位 and 配色.
+  ctx.slots.inject('settings.general.item', () =>
+    ctx.slots.register({ name: 'settings.general.item', id: 'boot-550c-variant', order: 28 }, VariantRow),
   )
 
   // The splash is deliberately NOT a slot contribution — mountOverlay() explains

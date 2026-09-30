@@ -15,7 +15,7 @@
  *
  * Usage:
  *   npm run render:splash
- *   node tools/render-splash.mjs --shots 1500,7000,12000 --mode full
+ *   node tools/render-splash.mjs --shots 1500,7000,12000 --mode full --variant 550w
  *   node tools/render-splash.mjs --escape 3000 --shots 3600     # the skip path
  *   node tools/render-splash.mjs --client /tmp/other/lib/client.js --out /tmp/shots
  */
@@ -48,9 +48,11 @@ const client = resolve(typeof opt.client === 'string' ? opt.client : join(root, 
 const outDir = resolve(typeof opt.out === 'string' ? opt.out : join(root, '.render'))
 const shots = String(opt.shots ?? '3000,7000,11000,15000').split(',').map(Number)
 const mode = typeof opt.mode === 'string' ? opt.mode : null
+const variant = typeof opt.variant === 'string' ? opt.variant : null
 const escapeAt = typeof opt.escape === 'string' ? Number(opt.escape) : null
 const port = Number(opt.port ?? 9223)
 const MODE_KEY = 'dsh-550c-boot:mode'
+const VARIANT_KEY = 'dsh-550c-boot:variant'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -95,6 +97,7 @@ mkdirSync(outDir, { recursive: true })
 console.log(`client: ${client}`)
 console.log(`browser: ${browser}`)
 console.log(`mode:   ${mode ?? '(the bundle default)'}`)
+console.log(`variant:${variant === null ? ' (the bundle default)' : ` ${variant}`}`)
 console.log(`shots:  ${shots.join(', ')} ms -> ${outDir}\n`)
 
 const server = createServer((request, response) => {
@@ -182,10 +185,10 @@ try {
   await session.send('Page.enable')
   await session.send('Runtime.enable')
   await session.send('Page.addScriptToEvaluateOnNewDocument', {
-    source:
-      mode === null
-        ? '/* no mode seeded: the bundle default applies */'
-        : `try { localStorage.setItem(${JSON.stringify(MODE_KEY)}, ${JSON.stringify(mode)}); } catch (error) {}`,
+    source: `try {
+      ${mode === null ? `localStorage.removeItem(${JSON.stringify(MODE_KEY)})` : `localStorage.setItem(${JSON.stringify(MODE_KEY)}, ${JSON.stringify(mode)})`};
+      ${variant === null ? `localStorage.removeItem(${JSON.stringify(VARIANT_KEY)})` : `localStorage.setItem(${JSON.stringify(VARIANT_KEY)}, ${JSON.stringify(variant)})`};
+    } catch (error) {}`,
   })
 
   await session.send('Page.navigate', { url: `${origin}/index.html` })
@@ -206,13 +209,35 @@ try {
     const { data } = await session.send('Page.captureScreenshot', { format: 'png' })
     const file = join(outDir, `${String(at).padStart(5, '0')}ms.png`)
     writeFileSync(file, Buffer.from(data, 'base64'))
+    // Structural probe, per shot: counts and stage labels — never pixels, since
+    // the show carries a real clock and randomly placed windows.
+    const probe = await session.send('Runtime.evaluate', {
+      expression: `JSON.stringify((() => {
+        const host = document.querySelector('.dsh550c-host');
+        const shadow = host === null ? null : host.shadowRoot;
+        return {
+          variant: host === null ? null : (host.dataset.variant ?? null),
+          mode: host === null ? null : (host.dataset.mode ?? null),
+          bg: host === null ? null : getComputedStyle(host).backgroundColor,
+          popups: shadow === null ? 0 : shadow.querySelectorAll('.win-popup').length,
+          nodeGrid: shadow === null ? 0 : shadow.querySelectorAll('#nodeGrid > *').length,
+          stage: shadow === null ? null : (shadow.querySelector('#b-stage')?.textContent ?? null),
+          pct: shadow === null ? null : (shadow.querySelector('#b-pct')?.textContent ?? null),
+          logLines: shadow === null ? 0 : shadow.querySelectorAll('.ln').length,
+          overlays: document.querySelectorAll('.dsh550c-host').length,
+        };
+      })())`,
+      returnByValue: true,
+    })
     console.log(`captured ${at} ms -> ${file}`)
+    console.log(`  probe: ${probe.result.value}`)
   }
 
   const probe = await session.send('Runtime.evaluate', {
     expression: `JSON.stringify({
       loaded: window.__loaded !== null && window.__loaded !== undefined,
       storedMode: localStorage.getItem(${JSON.stringify(MODE_KEY)}),
+      storedVariant: localStorage.getItem(${JSON.stringify(VARIANT_KEY)}),
       overlays: document.querySelectorAll('.dsh550c-host').length,
     })`,
     returnByValue: true,

@@ -18,7 +18,7 @@
  * CI only runs `extract`/`build`/`node --check`. See docs/VERIFICATION.md.
  *
  * Usage:
- *   node tools/leak-audit.mjs [--client lib/client.js] [--mode full]
+ *   node tools/leak-audit.mjs [--client lib/client.js] [--mode full] [--variant 550c]
  *                             [--skip 8000] [--settle 3500] [--port <cdp port>]
  *
  * Exit code 0 when no interval survives, 1 otherwise (or when the splash never
@@ -50,9 +50,11 @@ function args(argv) {
 const opt = args(process.argv.slice(2))
 const client = resolve(typeof opt.client === 'string' ? opt.client : join(root, 'lib/client.js'))
 const mode = typeof opt.mode === 'string' ? opt.mode : 'full'
+const variant = typeof opt.variant === 'string' ? opt.variant : '550c'
 const skipAt = Number(typeof opt.skip === 'string' ? opt.skip : 8000)
 const settle = Number(typeof opt.settle === 'string' ? opt.settle : 3500)
 const MODE_KEY = 'dsh-550c-boot:mode'
+const VARIANT_KEY = 'dsh-550c-boot:variant'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -148,7 +150,10 @@ const INSTRUMENT = `(() => {
     ),
   });
 
-  try { localStorage.setItem(${JSON.stringify(MODE_KEY)}, ${JSON.stringify(mode)}); } catch (error) {}
+  try {
+    localStorage.setItem(${JSON.stringify(MODE_KEY)}, ${JSON.stringify(mode)});
+    localStorage.setItem(${JSON.stringify(VARIANT_KEY)}, ${JSON.stringify(variant)});
+  } catch (error) {}
 })();`
 
 /** Serve the throwaway page from an http origin so localStorage is per-run. */
@@ -254,6 +259,7 @@ writeFileSync(join(harness, 'index.html'), PAGE)
 copyFileSync(client, join(harness, 'client.js'))
 console.log(`client:  ${client}`)
 console.log(`mode:    ${mode}`)
+console.log(`variant: ${variant}`)
 console.log(`skip:    ${skipAt} ms, then ${settle} ms of quiet`)
 console.log(`harness: ${harness}\n`)
 

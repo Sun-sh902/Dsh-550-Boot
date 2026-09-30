@@ -10,9 +10,11 @@
  * published client plugins — see any `lib/client.js` under
  * $DSH_HOME/profiles/*\/node_modules.
  *
- * Order matters: assets (stylesheet + markup) → show (the animation) → client
- * (the React surfaces and the plugin export). All three are plain top-level
- * declarations, so concatenation is a valid module body.
+ * Order matters: each machine's assets (stylesheet + markup) → its show (the
+ * animation) → its content layer → its registry entry → the registry itself →
+ * client (the React surfaces and the plugin export). All of them are plain
+ * top-level declarations, so concatenation is a valid module body, and a machine
+ * only ever adds files to its own directory.
  *
  * Usage: node scripts/build.mjs
  */
@@ -24,34 +26,58 @@ import { Script } from 'node:vm'
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '..')
 const PLUGIN_ID = 'dsh-550c-boot'
-const PARTS = ['src/assets.js', 'src/show.js', 'src/enhance.js', 'src/client.js']
+const PARTS = [
+  'src/variants/550c/assets.js',
+  'src/variants/550c/show.js',
+  'src/variants/550c/enhance.js',
+  'src/variants/550c/index.js',
+  'src/variants/550w/index.js',
+  'src/variants/550a/index.js',
+  'src/variants/registry.js',
+  'src/client.js',
+]
 
 const read = (file) => readFileSync(resolve(root, file), 'utf8')
 
 // ── cross-half contracts ────────────────────────────────────────────────────
 //
 // lib/index.js is the hand-written host half, evaluated at DSH startup; it carries
-// two literals by hand that must equal src/client.js's (both files say "keep in
-// sync"), plus the assumption that 'off' is a mode the browser half understands.
-// Drift is SILENT at runtime — the cover simply never bows out, or the splash
-// never retires it — so assert the pair here, inside the build CI already runs.
-// This adds no step: `npm run build` is the whole pipeline.
+// literals by hand that must equal the browser half's (both sides say "keep in
+// sync"): the mode key, the handshake global, the machine key, and the machine →
+// cover-colour table — plus the assumption that 'off' is a mode the browser half
+// understands. Drift is SILENT at runtime: the cover never bows out, the splash
+// never retires it, or another machine boots with a 550C-coloured first frame. So
+// assert the pairs here, inside the build CI already runs. This adds no step:
+// `npm run build` is the whole pipeline.
 function literal(source, pattern, what) {
   const match = pattern.exec(source)
   if (match === null) throw new Error(`build: ${what} not found (did the shape change?)`)
   return match[1]
 }
 
+/** Read a flat `{ 'key': 'value', … }` literal the checker can actually follow. */
+function pairs(source, pattern, what) {
+  const out = {}
+  for (const entry of literal(source, pattern, what).split(',')) {
+    const match = /^\s*['"]?([\w-]+)['"]?\s*:\s*['"]([^'"]+)['"]\s*$/.exec(entry)
+    if (match === null) throw new Error(`build: ${what} has an entry this check cannot read: "${entry.trim()}"`)
+    out[match[1]] = match[2]
+  }
+  return out
+}
+
 const hostSource = read('lib/index.js')
 const clientSource = read('src/client.js')
-for (const name of ['MODE_KEY', 'FIRST_FRAME_GLOBAL']) {
+const registrySource = read('src/variants/registry.js')
+for (const name of ['MODE_KEY', 'FIRST_FRAME_GLOBAL', 'VARIANT_KEY']) {
+  const sources = name === 'MODE_KEY' || name === 'FIRST_FRAME_GLOBAL' ? [hostSource, clientSource] : [hostSource, registrySource]
   const pattern = new RegExp(`const ${name} = '([^']+)'`)
-  const host = literal(hostSource, pattern, `${name} in lib/index.js`)
-  const client = literal(clientSource, pattern, `${name} in src/client.js`)
+  const host = literal(sources[0], pattern, `${name} in lib/index.js`)
+  const client = literal(sources[1], pattern, `${name} in the browser half`)
   if (host !== client) {
     throw new Error(
       `build: ${name} drifted between the halves — lib/index.js has ${JSON.stringify(host)}, ` +
-        `src/client.js has ${JSON.stringify(client)}`,
+        `the browser half has ${JSON.stringify(client)}`,
     )
   }
 }
@@ -63,7 +89,32 @@ const modeValues = literal(clientSource, /const MODE_VALUES = \[([^\]]+)\]/, 'MO
 if (!/['"]off['"]/.test(modeValues)) {
   throw new Error(`build: lib/index.js bows out on "off" but src/client.js MODE_VALUES is [${modeValues}]`)
 }
-process.stdout.write('build: host/client contracts ok (MODE_KEY, FIRST_FRAME_GLOBAL, "off")\n')
+// Every machine needs a cover colour, and no cover colour may outlive its machine:
+// the splash paints VARIANT_BG[id] on the same frame the host half retires the
+// cover that used the same value, so a missing or extra entry is a visible seam.
+const hostBg = pairs(hostSource, /const VARIANT_BG = \{([^}]*)\}/, 'VARIANT_BG in lib/index.js')
+const registryBg = pairs(registrySource, /const VARIANT_BG = \{([^}]*)\}/, 'VARIANT_BG in src/variants/registry.js')
+for (const [id, colour] of Object.entries(hostBg)) {
+  if (registryBg[id] !== colour) {
+    throw new Error(
+      `build: VARIANT_BG["${id}"] drifted — lib/index.js has ${colour}, the registry has ${String(registryBg[id])}`,
+    )
+  }
+}
+const variantIds = [...literal(registrySource, /const VARIANTS = \{([^}]*)\}/, 'VARIANTS').matchAll(/'([^']+)'\s*:/g)].map(
+  (match) => match[1],
+)
+const missing = variantIds.filter((id) => hostBg[id] === undefined)
+if (missing.length > 0) {
+  throw new Error(`build: machine(s) ${missing.join(', ')} have no VARIANT_BG entry — the first frame would be 550C's`)
+}
+const orphan = Object.keys(hostBg).filter((id) => !variantIds.includes(id))
+if (orphan.length > 0) {
+  throw new Error(`build: VARIANT_BG has ${orphan.join(', ')} but no such machine is registered`)
+}
+process.stdout.write(
+  `build: host/client contracts ok (MODE_KEY, FIRST_FRAME_GLOBAL, VARIANT_KEY, VARIANT_BG ×${variantIds.length}, "off")\n`,
+)
 
 const body = PARTS.map((file) => `//#region ${file}\n${read(file).trimEnd()}\n//#endregion`).join('\n\n')
 
