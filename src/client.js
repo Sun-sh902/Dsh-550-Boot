@@ -599,7 +599,10 @@ function SchemeRow() {
       React.createElement(
         'div',
         { className: 'dsh550c-row-desc' },
-        '琥珀是原作的配色，也是默认值。点「预览」可以立刻看效果。',
+        // Machine-agnostic on purpose: every machine maps 琥珀 onto its own
+        // default palette, and the other three schemes are global overrides on
+        // that machine's tokens (see docs/VARIANTS.md).
+        '琥珀是各机型自己的默认配色；另外三套是全局覆盖。点「预览」可以立刻看效果。',
       ),
     ),
     React.createElement(
