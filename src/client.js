@@ -449,6 +449,17 @@ function mountOverlay(force) {
 
     const stage = document.createElement('div')
     stage.className = 'dsh550c-stage'
+    // aria-hidden on the host (above) only takes the overlay out of the
+    // accessibility tree — it does not stop the keyboard. The port's fake windows
+    // carry real <button>s and Chrome also makes their scrollable bodies focusable,
+    // so Tab used to land inside the splash and, through shadow retargeting,
+    // report as document.activeElement === .dsh550c-host: focus parked in an
+    // invisible box for the whole show (axe's aria-hidden-focus). inert on the
+    // stage is the fix, and it has to be the stage rather than the host: the host
+    // must stay hit-testable, because clicking anywhere on the splash is the skip
+    // gesture — an inert subtree is not a hit target, so those clicks fall through
+    // to the host, which is exactly where the skip listener lives.
+    stage.setAttribute('inert', '')
     stage.innerHTML = mode === 'full' ? BOOT_MARKUP + APP_MARKUP : BOOT_MARKUP
     shadow.appendChild(stage)
 
