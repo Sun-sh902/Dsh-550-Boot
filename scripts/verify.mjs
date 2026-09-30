@@ -22,19 +22,13 @@
  *   --keep   leave the browser open (debugging)
  */
 import { spawn } from 'node:child_process'
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { BROWSER_CANDIDATES, findBrowser } from './browsers.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '..')
-
-const EDGE_CANDIDATES = [
-  `${process.env['ProgramFiles(x86)']}\\Microsoft\\Edge\\Application\\msedge.exe`,
-  `${process.env.ProgramFiles}\\Microsoft\\Edge\\Application\\msedge.exe`,
-  `${process.env.ProgramFiles}\\Google\\Chrome\\Application\\chrome.exe`,
-  `${process.env['ProgramFiles(x86)']}\\Google\\Chrome\\Application\\chrome.exe`,
-]
 
 function parseArgs(argv) {
   const out = {}
@@ -57,9 +51,9 @@ const at = Number(typeof args.at === 'string' ? args.at : 2600)
 const outPath = resolve(root, typeof args.out === 'string' ? args.out : `.verify/${mode}-${at}.png`)
 const port = 9333
 
-const browser = EDGE_CANDIDATES.find((candidate) => existsSync(candidate))
+const browser = findBrowser()
 if (browser === undefined) {
-  console.error('verify: no Edge/Chrome found')
+  console.error(`verify: no Edge/Chrome found; tried\n  ${BROWSER_CANDIDATES.join('\n  ')}`)
   process.exit(2)
 }
 
