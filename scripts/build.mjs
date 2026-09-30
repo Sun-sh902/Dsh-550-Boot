@@ -27,6 +27,44 @@ const PLUGIN_ID = 'dsh-550c-boot'
 const PARTS = ['src/assets.js', 'src/show.js', 'src/enhance.js', 'src/client.js']
 
 const read = (file) => readFileSync(resolve(root, file), 'utf8')
+
+// ── cross-half contracts ────────────────────────────────────────────────────
+//
+// lib/index.js is the hand-written host half, evaluated at DSH startup; it carries
+// two literals by hand that must equal src/client.js's (both files say "keep in
+// sync"), plus the assumption that 'off' is a mode the browser half understands.
+// Drift is SILENT at runtime — the cover simply never bows out, or the splash
+// never retires it — so assert the pair here, inside the build CI already runs.
+// This adds no step: `npm run build` is the whole pipeline.
+function literal(source, pattern, what) {
+  const match = pattern.exec(source)
+  if (match === null) throw new Error(`build: ${what} not found (did the shape change?)`)
+  return match[1]
+}
+
+const hostSource = read('lib/index.js')
+const clientSource = read('src/client.js')
+for (const name of ['MODE_KEY', 'FIRST_FRAME_GLOBAL']) {
+  const pattern = new RegExp(`const ${name} = '([^']+)'`)
+  const host = literal(hostSource, pattern, `${name} in lib/index.js`)
+  const client = literal(clientSource, pattern, `${name} in src/client.js`)
+  if (host !== client) {
+    throw new Error(
+      `build: ${name} drifted between the halves — lib/index.js has ${JSON.stringify(host)}, ` +
+        `src/client.js has ${JSON.stringify(client)}`,
+    )
+  }
+}
+// The host half's whole mode story is "bow out for 'off'".
+if (!/mode\s*===\s*["']off["']/.test(hostSource)) {
+  throw new Error('build: lib/index.js no longer bows out on mode === "off" — the check below assumes it does')
+}
+const modeValues = literal(clientSource, /const MODE_VALUES = \[([^\]]+)\]/, 'MODE_VALUES in src/client.js')
+if (!/['"]off['"]/.test(modeValues)) {
+  throw new Error(`build: lib/index.js bows out on "off" but src/client.js MODE_VALUES is [${modeValues}]`)
+}
+process.stdout.write('build: host/client contracts ok (MODE_KEY, FIRST_FRAME_GLOBAL, "off")\n')
+
 const body = PARTS.map((file) => `//#region ${file}\n${read(file).trimEnd()}\n//#endregion`).join('\n\n')
 
 const out = `window.__ModuleLoader__.load({
