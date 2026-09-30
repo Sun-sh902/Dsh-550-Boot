@@ -16,6 +16,7 @@
  * Usage:
  *   npm run render:splash
  *   node tools/render-splash.mjs --shots 1500,7000,12000 --mode full --variant 550w
+ *   node tools/render-splash.mjs --variant 550w --scheme cyan --shots 8000
  *   node tools/render-splash.mjs --escape 3000 --shots 3600     # the skip path
  *   node tools/render-splash.mjs --client /tmp/other/lib/client.js --out /tmp/shots
  */
@@ -49,10 +50,12 @@ const outDir = resolve(typeof opt.out === 'string' ? opt.out : join(root, '.rend
 const shots = String(opt.shots ?? '3000,7000,11000,15000').split(',').map(Number)
 const mode = typeof opt.mode === 'string' ? opt.mode : null
 const variant = typeof opt.variant === 'string' ? opt.variant : null
+const scheme = typeof opt.scheme === 'string' ? opt.scheme : null
 const escapeAt = typeof opt.escape === 'string' ? Number(opt.escape) : null
 const port = Number(opt.port ?? 9223)
 const MODE_KEY = 'dsh-550c-boot:mode'
 const VARIANT_KEY = 'dsh-550c-boot:variant'
+const SCHEME_KEY = 'dsh-550c-boot:scheme'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -98,6 +101,7 @@ console.log(`client: ${client}`)
 console.log(`browser: ${browser}`)
 console.log(`mode:   ${mode ?? '(the bundle default)'}`)
 console.log(`variant:${variant === null ? ' (the bundle default)' : ` ${variant}`}`)
+console.log(`scheme: ${scheme ?? '(the bundle default)'}`)
 console.log(`shots:  ${shots.join(', ')} ms -> ${outDir}\n`)
 
 const server = createServer((request, response) => {
@@ -178,6 +182,20 @@ function connect(wsUrl) {
   })
 }
 
+/** Poll a page expression until it satisfies `ok`, or give up. */
+async function until(session, expression, ok, { timeout = 5000, step = 20 } = {}) {
+  const deadline = Date.now() + timeout
+  while (Date.now() < deadline) {
+    const result = await session.send('Runtime.evaluate', {
+      expression: `(() => { ${expression} })()`,
+      returnByValue: true,
+    })
+    if (ok(result.result.value)) return result.result.value
+    await sleep(step)
+  }
+  throw new Error(`timed out waiting for ${expression}`)
+}
+
 let session
 try {
   const page = await findPage()
@@ -188,10 +206,17 @@ try {
     source: `try {
       ${mode === null ? `localStorage.removeItem(${JSON.stringify(MODE_KEY)})` : `localStorage.setItem(${JSON.stringify(MODE_KEY)}, ${JSON.stringify(mode)})`};
       ${variant === null ? `localStorage.removeItem(${JSON.stringify(VARIANT_KEY)})` : `localStorage.setItem(${JSON.stringify(VARIANT_KEY)}, ${JSON.stringify(variant)})`};
+      ${scheme === null ? `localStorage.removeItem(${JSON.stringify(SCHEME_KEY)})` : `localStorage.setItem(${JSON.stringify(SCHEME_KEY)}, ${JSON.stringify(scheme)})`};
     } catch (error) {}`,
   })
 
   await session.send('Page.navigate', { url: `${origin}/index.html` })
+  // A shot at 0 ms means "as early as the page exists": wait for the navigation
+  // to commit, otherwise the very first capture has no active page to grab.
+  await until(session, "return document.readyState === 'interactive' || document.readyState === 'complete'", (v) => v === true, {
+    timeout: 3000,
+    step: 10,
+  })
   const t0 = Date.now()
   let escaped = false
   for (const at of shots) {
@@ -209,16 +234,30 @@ try {
     const { data } = await session.send('Page.captureScreenshot', { format: 'png' })
     const file = join(outDir, `${String(at).padStart(5, '0')}ms.png`)
     writeFileSync(file, Buffer.from(data, 'base64'))
-    // Structural probe, per shot: counts and stage labels — never pixels, since
-    // the show carries a real clock and randomly placed windows.
+    // Structural probe, per shot: counts, stage labels and the parallax matrix —
+    // never pixels, since the show carries a real clock and randomly placed
+    // windows. `.w-*` fields belong to the 550W composition, `#b-*` to 550C.
     const probe = await session.send('Runtime.evaluate', {
       expression: `JSON.stringify((() => {
         const host = document.querySelector('.dsh550c-host');
         const shadow = host === null ? null : host.shadowRoot;
+        const stage = shadow === null ? null : shadow.querySelector('.w-stage');
+        const ty = (el) => {
+          const value = getComputedStyle(el).transform;
+          return value === 'none' ? 0 : Math.round(new DOMMatrixReadOnly(value).m42 * 100) / 100;
+        };
         return {
           variant: host === null ? null : (host.dataset.variant ?? null),
           mode: host === null ? null : (host.dataset.mode ?? null),
           bg: host === null ? null : getComputedStyle(host).backgroundColor,
+          phase: stage === null ? null : (stage.dataset.phase ?? null),
+          hintShown: shadow === null ? null : (shadow.querySelector('#hint')?.classList.contains('show') ?? null),
+          layers: shadow === null ? [] : [...shadow.querySelectorAll('.w-layer')].map((el) => ({ depth: Number(el.dataset.depth), ty: ty(el) })),
+          sites: shadow === null ? 0 : shadow.querySelectorAll('.w-site').length,
+          links: shadow === null ? 0 : shadow.querySelectorAll('.w-link').length,
+          branches: shadow === null ? 0 : shadow.querySelectorAll('.w-branch').length,
+          gauges: shadow === null ? 0 : shadow.querySelectorAll('.w-gauge').length,
+          count: shadow === null ? null : (shadow.querySelector('#w-count')?.textContent ?? null),
           popups: shadow === null ? 0 : shadow.querySelectorAll('.win-popup').length,
           nodeGrid: shadow === null ? 0 : shadow.querySelectorAll('#nodeGrid > *').length,
           stage: shadow === null ? null : (shadow.querySelector('#b-stage')?.textContent ?? null),

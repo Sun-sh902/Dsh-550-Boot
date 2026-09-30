@@ -126,6 +126,10 @@
     "check": "node --check lib/client.js && node --check lib/index.js",
     "audit:leak": "node tools/leak-audit.mjs",
     "render:splash": "node tools/render-splash.mjs",
+    "measure:perf": "node tools/measure-perf.mjs",
+    "verify:reduced-motion": "node tools/verify-reduced-motion.mjs",
+    "verify:variant-bg": "node tools/verify-variant-bg.mjs",
+    "verify:skip": "node tools/verify-skip.mjs",
     "prepublishOnly": "node scripts/extract.mjs && node scripts/build.mjs && node --check lib/client.js && node --check lib/index.js"
   },
   "dependencies": {

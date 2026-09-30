@@ -78,6 +78,23 @@ node tools/render-splash.mjs --client /tmp/other/lib/client.js    # 和别的构
 它只覆盖**客户端半边**——宿主半边（`lib/index.js` 的首帧注入）要真机重启才能看，清单见
 [VERIFY-MACOS.md](VERIFY-MACOS.md)。
 
+## 机器维度与性能的本地工具（都不进 CI）
+
+`tools/` 下的每个工具都是零依赖（Node ≥22 的 `fetch`/`WebSocket`）＋ `scripts/browsers.mjs` 找浏览器，
+共用 `tools/lib/harness.mjs`（临时静态服务器 + 无头 Chrome + 极简 CDP + 桩页面）。全部**不挂**
+`npm run check`：CI 没有浏览器，只跑 `extract` + `build` + `node --check`。
+
+| 命令 | 查什么 |
+|---|---|
+| `npm run render:splash -- --variant 550w --shots 0,2000,…` | 按毫秒截图 + 结构探针（`data-phase`、三层 `transform`、站点/链路/弹道/仪表计数） |
+| `npm run audit:leak -- --variant 550w` | 跳过之后没有残留 `setInterval`（打印调用点栈与残留监听器） |
+| `npm run measure:perf -- --variant 550w` | long task / rAF 帧间隔 / CPU profile / 倒计时写入次数；`--variant 550c` 是同一把尺子的基线 |
+| `npm run verify:reduced-motion -- --variant 550w` | reduce 下没存过偏好 → 只播简易档；显式选完整/关闭仍然赢 |
+| `npm run verify:variant-bg` | 宿主半边首帧底色逐机型正确、未知值回退 550C、`end()` 不留痕 |
+| `npm run verify:skip -- --variants 550c,550w --at 3000,9000,15000` | 真 `Esc` 与真点击在各阶段都能 <2s 收场，跳过提示同时消失，焦点不留在遮罩上 |
+
+（`--variant` 缺省时用机型注册表的默认值 550C；`render:splash` 还支持 `--scheme` 看配色覆盖。）
+
 ## 真实 GUI
 
 `scripts/verify.mjs` 用 DevTools 协议驱动真实浏览器，可以在**精确时刻**、**指定模式**下截图并读取
