@@ -5,7 +5,12 @@
  *
  *   machine   which片头 plays — `550c` (the original port), `550w`, `550a`.
  *             Owned by this file: a machine contributes its own markup,
- *             stylesheet, timeline and content layer.
+ *             stylesheet, timeline and content layer. A machine whose
+ *             `status` is `'wip'` has no timeline of its own: it stays in the
+ *             picker and plays the 「正在开发」 placeholder
+ *             (src/variants/wip/index.js) instead. `status` is absent on a
+ *             machine that is implemented, which is the only machine (550C)
+ *             that has ever shipped one.
  *   mode      关闭 / 简易 / 完整 — how much of that machine plays. A machine
  *             that mounts no `app` surface plays its boot stage in both.
  *   scheme    琥珀 / 绿 / 青 / 白 — a palette override, applied as
@@ -35,6 +40,10 @@ const DEFAULT_VARIANT = '550c'
  * asserts it. The splash itself reads the same value from the variant entry
  * (see mountOverlay), which is what keeps the hand-off one colour instead of a
  * 550C-sized flash on another machine.
+ *
+ * A 「正在开发」 placeholder needs an entry here as much as a finished machine
+ * does: the cover is painted before the shell exists, so it cannot know whether a
+ * timeline is coming, and the placeholder paints its own backdrop this colour.
  */
 const VARIANT_BG = { '550c': '#050403', '550w': '#04070a', '550a': '#0a0703' }
 

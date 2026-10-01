@@ -8,7 +8,7 @@
  *
  * Usage:
  *   npm run verify:reduced-motion
- *   npm run verify:reduced-motion -- --variant 550w
+ *   npm run verify:reduced-motion -- --variant 550a
  */
 import { rmSync } from 'node:fs'
 import { once } from 'node:events'

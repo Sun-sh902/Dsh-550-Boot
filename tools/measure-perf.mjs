@@ -22,7 +22,7 @@
  *
  * Usage:
  *   npm run measure:perf -- --variant 550c
- *   npm run measure:perf -- --variant 550w --mode full
+ *   npm run measure:perf -- --variant 550a --mode full
  */
 import { rmSync } from 'node:fs'
 import { once } from 'node:events'

@@ -85,7 +85,7 @@ DSH 的客户端 bundle 带 `max-age=31536000, immutable`，而 URL 上的 `rev`
 | [docs/VERIFICATION.md](docs/VERIFICATION.md) | 构建与验证：harness 探针、真实 GUI 的 CDP 截图断言 |
 | [docs/PUBLISHING.md](docs/PUBLISHING.md) | 发布与收录：GitHub 直装 / OMDSH Hub 投稿 / npm |
 | [docs/PLAN-macos-and-update-check.md](docs/PLAN-macos-and-update-check.md) | 评估稿：macOS 适配待办、设置里的「检查更新」方案对比 |
-| [docs/VARIANTS.md](docs/VARIANTS.md) | 机型维度（550C / 550W / 550A）：与档位、配色如何正交，新增机型要动什么 |
+| [docs/VARIANTS.md](docs/VARIANTS.md) | 机型维度（550C / 550W / 550A）：与档位、配色如何正交，新增机型要动什么；550W / 550A 目前是「正在开发」占位 |
 | [LOCAL-CHANGES.md](LOCAL-CHANGES.md) | 本地改动（相对上游）：默认档 `full` 这一类重装后会被静默丢掉的偏离 |
 
 > 顶部徽章都是外部图片（shields.io / 第三方访客计数器），加载不出来不影响 README 本身。

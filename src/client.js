@@ -142,6 +142,9 @@ const ROW_CSS = `
 .dsh550c-seg button.on{background:var(--dsw-alias-brand-primary,#4d6bfe);color:#fff}
 .dsh550c-preview{border:1px solid var(--dsw-alias-border-l2,rgba(127,127,127,.35));background:transparent;color:var(--dsw-alias-label-primary,#191919);font-family:inherit;font-size:12.5px;line-height:1.4;padding:5px 14px;border-radius:8px;cursor:pointer}
 .dsh550c-preview:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.14))}
+.dsh550c-wip{font-size:11.5px;line-height:1.4;padding:3px 8px;border-radius:999px;
+  border:1px dashed var(--dsw-alias-border-l2,rgba(127,127,127,.45));
+  color:var(--dsw-alias-label-secondary,#666);white-space:nowrap}
 `
 
 function ensureRowStyle() {
@@ -633,24 +636,31 @@ function SchemeRow() {
  *
  * Same shape as the other two rows, and orthogonal to them: it picks the machine
  * (its own markup, stylesheet, timeline and default palette), the 档位 row picks
- * how much of it plays, and the 配色 row overrides the palette on top. Switching
- * a machine does NOT play anything — only 预览 (on either row) does.
+ * how much of it plays, and the 配色 row overrides the palette on top.
  *
- * A machine with no timeline of its own yet still appears here and still plays:
- * it falls back to the skeleton until its own phase lands, which is what the
- * description says out loud.
+ * A machine whose entry carries `status: 'wip'` has no timeline yet: it keeps its
+ * id, its label and its first-frame colour, and picking it replays the
+ * 「正在开发」 placeholder on the spot — the option must answer the click instead
+ * of looking inert, and the alternative (silently borrowing 550C's timeline) is
+ * what the withdrawn 550W did and why it read as "550C with another letter".
+ * The 档位 row is still honoured for everything else: 关闭 mounts nothing at
+ * boot, and 预览 on the 档位 row replays whatever machine is selected.
  */
 function VariantRow() {
   const [variant, setVariant] = React.useState(readVariant)
+  const entries = variantList()
 
   React.useEffect(() => {
     ensureRowStyle()
   }, [])
 
-  const choose = React.useCallback((next) => {
-    writeVariant(next)
-    setVariant(next)
+  const choose = React.useCallback((entry) => {
+    writeVariant(entry.id)
+    setVariant(entry.id)
+    if (entry.status === 'wip') mountOverlay(true)
   }, [])
+
+  const selected = entries.filter((entry) => entry.id === variant)[0] ?? entries[0]
 
   return React.createElement(
     'div',
@@ -662,7 +672,7 @@ function VariantRow() {
       React.createElement(
         'div',
         { className: 'dsh550c-row-desc' },
-        '选哪台机器开机。550C 是原作；550W 与 550A 目前共用这套骨架，各自的片头随后续版本展开。',
+        '选哪台机器开机。550C 是原作；550W 与 550A 的片头仍在开发中，点一下就会播「正在开发」占位。',
       ),
     ),
     React.createElement(
@@ -671,19 +681,22 @@ function VariantRow() {
       React.createElement(
         'div',
         { className: 'dsh550c-seg' },
-        variantList().map((entry) =>
+        entries.map((entry) =>
           React.createElement(
             'button',
             {
               key: entry.id,
               type: 'button',
               className: variant === entry.id ? 'on' : '',
-              onClick: () => choose(entry.id),
+              onClick: () => choose(entry),
             },
             entry.label,
           ),
         ),
       ),
+      selected !== undefined && selected.status === 'wip'
+        ? React.createElement('span', { className: 'dsh550c-wip' }, '开发中')
+        : null,
     ),
   )
 }

@@ -15,10 +15,14 @@
  *
  * Usage:
  *   npm run render:splash
- *   node tools/render-splash.mjs --shots 1500,7000,12000 --mode full --variant 550w
- *   node tools/render-splash.mjs --variant 550w --scheme cyan --shots 8000
+ *   node tools/render-splash.mjs --shots 1500,7000,12000 --mode full
+ *   node tools/render-splash.mjs --variant 550a --scheme cyan --shots 1200
  *   node tools/render-splash.mjs --escape 3000 --shots 3600     # the skip path
  *   node tools/render-splash.mjs --client /tmp/other/lib/client.js --out /tmp/shots
+ *
+ * `--variant` takes any registered machine. 550W and 550A have no timeline of
+ * their own yet: they play the ~2.2 s 「正在开发」 placeholder (see
+ * src/variants/wip/index.js), so shoot them inside that window.
  */
 import { spawn } from 'node:child_process'
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -236,12 +240,15 @@ try {
     writeFileSync(file, Buffer.from(data, 'base64'))
     // Structural probe, per shot: counts, stage labels and the parallax matrix —
     // never pixels, since the show carries a real clock and randomly placed
-    // windows. `.w-*` fields belong to the 550W composition, `#b-*` to 550C.
+    // windows. Machine-agnostic on purpose: a machine that wants a phase or a
+    // parallax layer marks it `data-phase` / `data-depth`, and anything else it
+    // draws is simply not counted here (`#b-*` / `.ln` / `#nodeGrid` are 550C's
+    // app surface, and report absent on a machine that mounts none).
     const probe = await session.send('Runtime.evaluate', {
       expression: `JSON.stringify((() => {
         const host = document.querySelector('.dsh550c-host');
         const shadow = host === null ? null : host.shadowRoot;
-        const stage = shadow === null ? null : shadow.querySelector('.w-stage');
+        const stage = shadow === null ? null : shadow.querySelector('[data-phase]');
         const ty = (el) => {
           const value = getComputedStyle(el).transform;
           return value === 'none' ? 0 : Math.round(new DOMMatrixReadOnly(value).m42 * 100) / 100;
@@ -252,12 +259,7 @@ try {
           bg: host === null ? null : getComputedStyle(host).backgroundColor,
           phase: stage === null ? null : (stage.dataset.phase ?? null),
           hintShown: shadow === null ? null : (shadow.querySelector('#hint')?.classList.contains('show') ?? null),
-          layers: shadow === null ? [] : [...shadow.querySelectorAll('.w-layer')].map((el) => ({ depth: Number(el.dataset.depth), ty: ty(el) })),
-          sites: shadow === null ? 0 : shadow.querySelectorAll('.w-site').length,
-          links: shadow === null ? 0 : shadow.querySelectorAll('.w-link').length,
-          branches: shadow === null ? 0 : shadow.querySelectorAll('.w-branch').length,
-          gauges: shadow === null ? 0 : shadow.querySelectorAll('.w-gauge').length,
-          count: shadow === null ? null : (shadow.querySelector('#w-count')?.textContent ?? null),
+          layers: shadow === null ? [] : [...shadow.querySelectorAll('[data-depth]')].map((el) => ({ depth: Number(el.dataset.depth), ty: ty(el) })),
           popups: shadow === null ? 0 : shadow.querySelectorAll('.win-popup').length,
           nodeGrid: shadow === null ? 0 : shadow.querySelectorAll('#nodeGrid > *').length,
           stage: shadow === null ? null : (shadow.querySelector('#b-stage')?.textContent ?? null),

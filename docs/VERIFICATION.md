@@ -86,13 +86,14 @@ node tools/render-splash.mjs --client /tmp/other/lib/client.js    # 和别的构
 
 | 命令 | 查什么 |
 |---|---|
-| `npm run render:splash -- --variant 550w --shots 0,2000,…` | 按毫秒截图 + 结构探针（`data-phase`、三层 `transform`、站点/链路/弹道/仪表计数） |
-| `npm run audit:leak -- --variant 550w` | 跳过之后没有残留 `setInterval`（打印调用点栈与残留监听器） |
-| `npm run measure:perf -- --variant 550w` | long task / rAF 帧间隔 / CPU profile / 倒计时写入次数；`--variant 550c` 是同一把尺子的基线 |
-| `npm run verify:reduced-motion -- --variant 550w` | reduce 下没存过偏好 → 只播简易档；显式选完整/关闭仍然赢 |
-| `npm run verify:variant-bg` | 宿主半边首帧底色逐机型正确、未知值回退 550C、`end()` 不留痕 |
-| `npm run verify:skip -- --variants 550c,550w --at 3000,9000,15000` | 真 `Esc` 与真点击在各阶段都能 <2s 收场，跳过提示同时消失，焦点不留在遮罩上 |
-| `npm run mock:550w` | 550W 重做（Step 1）的 5 张静态关键帧 → `.render/550w-step1-*.png`；第 1 张挂的是 550C 的真实样式表与 boot markup |
+| `npm run render:splash -- --variant 550c --shots 0,2000,…` | 按毫秒截图 + 结构探针（`data-phase`、`#b-*` 阶段/进度、窗口与日志行计数、视差矩阵） |
+| `npm run render:splash -- --variant 550w --shots 700,1600,2400` | 未实装机型：`#wip` 占位里的「正在开发」在，约 2.8s 后探针的 `overlays` 归 0 |
+| `npm run audit:leak -- --variant 550w` | 跳过之后没有残留 `setInterval`（打印调用点栈与残留监听器）；占位同样适用 |
+| `npm run measure:perf -- --variant 550c` | long task / 主线程 busy 份额 / rAF 帧间隔 / CPU profile；帧间隔只作参考（本机同配置两次差 2×） |
+| `npm run verify:reduced-motion -- --variant 550a` | reduce 下没存过偏好 → 只播简易档；显式选完整/关闭仍然赢 |
+| `npm run verify:variant-bg` | 宿主半边首帧底色逐机型正确（含两个占位机型）、未知值回退 550C、`end()` 不留痕 |
+| `npm run verify:skip -- --variants 550c --at 3000,9000,15000` | 真 `Esc` 与真点击在各阶段都能 <2s 收场，跳过提示同时消失，焦点不留在遮罩上 |
+| `npm run verify:skip -- --variants 550w,550a --at 800,1600` | 约 2.2s 的「正在开发」占位里，两种手势同样都能收场 |
 
 （`--variant` 缺省时用机型注册表的默认值 550C；`render:splash` 还支持 `--scheme` 看配色覆盖。）
 

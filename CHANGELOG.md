@@ -2,6 +2,24 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)；版本号用 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 移除
+
+- **550W 的动画实现整版撤掉**（第一版冷白/青的 18s 时间线，以及第二版做到一半的重做脚手架）。
+  删掉的文件：`src/variants/550w/{assets,show,enhance}.js`、`src/variants/shared/boot.js`、
+  `assets/boot-template.html`、`tools/mock-550w.mjs`，以及未跟踪的 `work/`（参考图取样与字形描摹脚本）
+  和 `.render/` 里的静态图。第一版没有"机器/月球/叙事"，结尾字标也压不住场；重做方向见
+  [docs/PLAN-550w.md](docs/PLAN-550w.md)（已挂起，方案与参考图量测存档）。
+
+### 变更
+
+- **机型选择器保留 `550W` / `550A`，点下去播「正在开发」占位**（新增 `src/variants/wip/index.js`，
+  约 2.2s、可跳过、`audit:leak` 零残留）。注册表条目新增可选的 `status: 'wip'`，选择器据此
+  在点击时重播占位并挂一个「开发中」标签；开机路径照旧听档位（`off` 仍然什么都不挂）。
+  两台机器的 id、标签与首帧底色都没动，装过 `550W` 的 profile 不会被当成垃圾值。
+- `npm run mock:550w` 随工具一起下线。
+
 ## [0.1.4] - 2026-09-30
 
 ### 修复

@@ -7,13 +7,17 @@
  * list names, for each machine, and checks:
  *
  *   - the overlay is gone within 2 s of the gesture
- *   - the skip hint (550W's `#hint.show`) is gone with it
+ *   - whatever skip hint the machine shows is gone with it
  *   - focus is not left inside the hidden splash
  *   - the page is interactive again (a click on the page's own button lands)
  *
+ * Timestamps are per machine: 550C's full run is ~11.5 s, while 550W and 550A
+ * play a ~2.2 s 「正在开发」 placeholder — pick `--at` inside the run you mean.
+ *
  * Usage:
  *   npm run verify:skip
- *   npm run verify:skip -- --at 3000,9000,15000 --variants 550c,550w
+ *   npm run verify:skip -- --at 3000,9000,15000 --variants 550c
+ *   npm run verify:skip -- --at 800,1600 --variants 550w,550a
  */
 import { rmSync } from 'node:fs'
 import { once } from 'node:events'
@@ -43,7 +47,7 @@ function args(argv) {
 
 const opt = args(process.argv.slice(2))
 const client = opt.client ?? new URL('../lib/client.js', import.meta.url).pathname
-const variants = String(opt.variants ?? '550c,550w').split(',')
+const variants = String(opt.variants ?? '550c').split(',')
 const at = String(opt.at ?? '3000,9000,15000').split(',').map(Number)
 const port = Number(opt.port ?? 9440)
 
@@ -79,7 +83,7 @@ try {
            if (host === null) return null;
            return {
              hint: host.shadowRoot.querySelector('#hint')?.classList.contains('show') ?? null,
-             phase: host.shadowRoot.querySelector('.w-stage')?.dataset.phase ?? null,
+             phase: host.shadowRoot.querySelector('[data-phase]')?.dataset.phase ?? null,
            };`,
         )
         if (before === null) {

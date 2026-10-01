@@ -130,7 +130,6 @@
     "verify:reduced-motion": "node tools/verify-reduced-motion.mjs",
     "verify:variant-bg": "node tools/verify-variant-bg.mjs",
     "verify:skip": "node tools/verify-skip.mjs",
-    "mock:550w": "node tools/mock-550w.mjs",
     "prepublishOnly": "node scripts/extract.mjs && node scripts/build.mjs && node --check lib/client.js && node --check lib/index.js"
   },
   "dependencies": {

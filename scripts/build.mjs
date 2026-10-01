@@ -14,7 +14,9 @@
  * animation) → its content layer → its registry entry → the registry itself →
  * client (the React surfaces and the plugin export). All of them are plain
  * top-level declarations, so concatenation is a valid module body, and a machine
- * only ever adds files to its own directory.
+ * only ever adds files to its own directory. The 「正在开发」 placeholder a
+ * machine without a timeline plays (src/variants/wip/) comes before the entries
+ * that reference it, because an entry reads its `WIP_CSS` at module scope.
  *
  * Usage: node scripts/build.mjs
  */
@@ -31,9 +33,7 @@ const PARTS = [
   'src/variants/550c/show.js',
   'src/variants/550c/enhance.js',
   'src/variants/550c/index.js',
-  'src/variants/550w/assets.js',
-  'src/variants/550w/show.js',
-  'src/variants/550w/enhance.js',
+  'src/variants/wip/index.js',
   'src/variants/550w/index.js',
   'src/variants/550a/index.js',
   'src/variants/registry.js',

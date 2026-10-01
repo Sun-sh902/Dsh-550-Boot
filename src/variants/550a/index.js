@@ -1,16 +1,18 @@
 /**
- * 550A — placeholder entry (Phase 1: the pipeline, not the machine).
+ * 550A — 未实装：same deal as 550W (see that entry).
  *
- * See src/variants/550w/index.js — same deal: selectable, its own first-frame
- * colour, 550C's timeline underneath until its own phase lands.
+ * Selectable, its own first-frame colour, and the 「正在开发」 placeholder instead
+ * of a timeline it does not have. `status: 'wip'` is what makes the settings row
+ * replay the placeholder on click.
  */
 const VARIANT_550A = {
   id: '550a',
   label: '550A',
-  boot: BOOT_MARKUP,
-  app: APP_MARKUP,
-  css: CSS_550C,
-  show: createShow,
-  enhance: enhanceShow,
+  status: 'wip',
+  boot: wipBootMarkup('550A'),
+  app: null,
+  css: WIP_CSS,
+  show: createWipShow,
+  enhance: enhanceWip,
   watchdogMs: { simple: 12000, full: 30000 },
 }

@@ -260,64 +260,17 @@ const showOut =
   js +
   wrapperTail
 
-// ── shared boot module: the 550C opening, parameterised for other machines ────
+// ── output ────────────────────────────────────────────────────────────────────
 //
-// 550W's Act 1 IS 550C's opening — same markup, same timeline — with exactly two
-// substitutions (the tail glyph and the subtitle). Rather than let the two copies
-// drift, the extractor emits the shared, parameterised copy from the SAME source
-// and asserts the relationship, so "same opening" is a build-time fact:
-//
-//   1. filling the two holes back in reproduces BOOT_MARKUP byte for byte;
-//   2. the shared timeline still carries 550C's own timing expressions.
-//
-// 550C keeps its own generated files exactly as they are, so nothing here can
-// change what 550C plays.
-const TAIL_HOLE = '<!--550W-TAIL-GLYPH-->'
-const MID_HOLE = '<!--550W-MID-CLASS-->'
-const sharedBootTemplate = readFileSync(resolve(root, 'assets/boot-template.html'), 'utf8')
-const bootTail = /<g id="cee">[\s\S]*?<\/g>/.exec(bootMarkup)
-must(bootTail !== null, 'no <g id="cee"> tail glyph in the ported boot markup')
-must(sharedBootTemplate.includes(TAIL_HOLE), `assets/boot-template.html is missing ${TAIL_HOLE}`)
-must(sharedBootTemplate.includes(MID_HOLE), `assets/boot-template.html is missing ${MID_HOLE}`)
-// The load-bearing assertion: the hand-maintained template, with 550C's own tail
-// glyph and its own mid-glyph class filled back in, must reproduce the ported
-// markup exactly. Edit either side and this fails — that is the whole point.
-must(
-  sharedBootTemplate.replace(TAIL_HOLE, bootTail[0]).replaceAll(MID_HOLE, 'red') === bootMarkup,
-  'assets/boot-template.html no longer matches the ported #boot markup (fill the two holes ' +
-    'with 550C\'s tail glyph and mid-glyph class and it must be byte-identical)',
-)
-
-const playMatch = /function playBoot\(\)\{([\s\S]*?)\n\}\n/.exec(js)
-must(playMatch !== null, 'playBoot() was not found in the ported script')
-const playBody = playMatch[1]
-const TIMING = ['250 + i * 300', '2400', '+ 400', '+ 600']
-for (const expression of TIMING) {
-  must(playBody.includes(expression), `playBoot() lost the timing expression "${expression}"`)
-}
-
-const sharedOut =
-  banner('shared/boot', 'the 550C opening, parameterised (generated from the same source)') +
-  `const BOOT_MARKUP_TEMPLATE = ${JSON.stringify(sharedBootTemplate)};\n\n` +
-  `/** The opening markup for a machine: its tail glyph, and which glyph is the red one. */\n` +
-  `function bootMarkupFor(tail, midClass) {\n` +
-  `  return BOOT_MARKUP_TEMPLATE.replace(${JSON.stringify(TAIL_HOLE)}, tail).replaceAll(${JSON.stringify(MID_HOLE)}, midClass);\n` +
-  `}\n\n` +
-  `/**\n` +
-  ` * 550C's playBoot(), wrapping and all — the body is copied verbatim, and the\n` +
-  ` * two dependencies the ported closure used to get for free are passed in (the\n` +
-  ` * stage to query, and the cancellable later() of the caller's timeline).\n` +
-  ` */\n` +
-  `function playBootShared(deps) {\n` +
-  `  const stage = deps.stage;\n` +
-  `  const later = deps.later;\n` +
-  playBody +
-  `\n}\n`
+// Two files, both 550C's own. The shared, parameterised boot module that 550W's
+// withdrawn Act 1 needed (assets/boot-template.html -> src/variants/shared/boot.js)
+// went with it: nothing in the tree plays 550C's opening under another machine's
+// name any more, so there is nothing to keep in sync. 550C's generated files are
+// byte-identical to before that experiment — see git log for both ends of it.
 
 for (const [file, text] of [
   ['src/variants/550c/assets.js', assetsOut],
   ['src/variants/550c/show.js', showOut],
-  ['src/variants/shared/boot.js', sharedOut],
 ]) {
   mkdirSync(resolve(root, dirname(file)), { recursive: true })
   writeFileSync(resolve(root, file), text)
