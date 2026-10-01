@@ -10,6 +10,9 @@
  *   - requestAnimationFrame gaps: how many frames the page missed
  *   - a CDP CPU profile, aggregated by self time, so the answer to "what is it
  *     actually doing" is a function list
+ *   - the main thread's BUSY share (100 - idle) straight out of that profile:
+ *     the headline budget, because frame-interval numbers are not reproducible
+ *     here — two runs of the same build on this machine differ by up to 2x
  *   - plus, when the machine has one, the countdown's textContent writes: the
  *     refresh rate is a budget, so it is counted rather than assumed
  *
@@ -150,15 +153,23 @@ try {
     })
     .sort((a, b) => b.micros - a.micros)
   const profiled = rows.reduce((total, row) => total + row.micros, 0)
+  const idle = rows.find((row) => row.name.startsWith('(idle)'))?.micros ?? 0
+  const busy = profiled === 0 ? 0 : 100 - (idle / profiled) * 100
 
   console.log(`overlay mounted at ${mounted} ms, gone at ${ended} ms (run length ${ended - mounted} ms)`)
+  // The headline number: frame-interval numbers are not reproducible here (two
+  // runs of the same build differ by up to 2x), so busy share is the budget.
+  console.log(
+    `main thread busy: ${busy.toFixed(1)} %  (${Math.round((profiled - idle) / 1000)} ms of ` +
+      `${Math.round(profiled / 1000)} ms sampled)`,
+  )
   console.log(`\nlong tasks (>50 ms): ${stats.longtasks.length}`)
   for (const task of stats.longtasks.slice(0, 8)) {
     console.log(`  ${String(task.start).padStart(6)} ms  ${String(task.duration).padStart(4)} ms  ${task.attribution}`)
   }
   console.log(
-    `\nframes: ${stats.frames}  mean ${stats.gapMean} ms  median ${stats.gapMedian} ms  ` +
-      `p95 ${stats.gapP95} ms  max ${stats.gapMax} ms  frames >20 ms: ${stats.over20}`,
+    `\nframes (reference only, see the note in the header): ${stats.frames}  mean ${stats.gapMean} ms  ` +
+      `median ${stats.gapMedian} ms  p95 ${stats.gapP95} ms  max ${stats.gapMax} ms  >20 ms: ${stats.over20}`,
   )
   console.log(`countdown textContent writes: ${stats.countWrites}`)
   console.log(`\nCPU profile self time (total sampled ${Math.round(profiled / 1000)} ms) — top frames:`)

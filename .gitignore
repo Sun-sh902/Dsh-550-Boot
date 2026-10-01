@@ -5,6 +5,8 @@ node_modules/
 .verify/
 # tools/render-splash.mjs 的输出（无头截图 + Chrome profile）
 .render/
+# 一次性分析脚本（参考图取样、字形描摹）的工作目录
+work/
 
 *.log
 .DS_Store
