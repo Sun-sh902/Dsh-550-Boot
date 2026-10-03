@@ -1,7 +1,12 @@
 # 本地改动（相对上游）
 
+> 这是从上游 tarball 开始的本地开发历史。当前已分出 `Sun-sh902/Dsh-550-Boot`，
+> 包名为 `dsh-550-boot`，安装只使用 README 中的 GitHub 直装路径。
+> 下文的上游安装命令、旧目录与补丁脚本仅作历史说明，不是本仓库的发布途径。
+
 这个目录**不是**上游仓库的克隆，而是一份带本地改动的检出版本：上游 `0.1.4` 的 GitHub tarball 解包
-（解出来时没有 `.git`），本地 `git init` 后补了 baseline commit `08f8ec8`，之后的改动都在这个仓库里。
+（解出来时没有 `.git`），本地 `git init` 后补了 baseline commit，之后的改动都在这个仓库里。
+隐私清理会改变这些本地提交的 id，但不会删除上游来源说明或改写作者姓名。
 
 这份文件只记**重装 / 更新时会被静默丢掉的东西**，其余改动 `git log` 里都有。
 
@@ -45,7 +50,7 @@ grep -n "const DEFAULT_MODE = " src/client.js      # 期望：const DEFAULT_MODE
 全部以 commit 的形式在上游之上，没有额外的 patch 文件：
 
 ```sh
-git log --oneline 08f8ec8..HEAD
+git log --oneline --reverse
 ```
 
 要点：首帧上限 3s 与 `#root` 指纹兜底（`lib/index.js`）、`prefers-reduced-motion` 兜底到简易档和

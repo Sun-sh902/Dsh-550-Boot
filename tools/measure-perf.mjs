@@ -78,9 +78,18 @@ new PerformanceObserver((list) => {
   }
 }).observe({ entryTypes: ['longtask'] });
 // The countdown is a 20 Hz budget, so count its writes rather than trusting it.
+// The node is machine-specific: 550C's ported terminal and 550W's honest clock
+// are different elements, so both ids are tried (a machine with neither leaves
+// the counter at 0, which is the honest answer for a machine without a clock).
+const COUNT_IDS = ['#w-count', '#b-count'];
 const watchCount = () => {
   const host = document.querySelector('.dsh550c-host');
-  const node = host === null ? null : host.shadowRoot?.querySelector('#w-count');
+  let node = null;
+  for (const id of COUNT_IDS) {
+    if (host === null) break;
+    node = host.shadowRoot?.querySelector(id) ?? null;
+    if (node !== null) break;
+  }
   if (node === null) { setTimeout(watchCount, 100); return; }
   new MutationObserver((records) => {
     for (const record of records) {
@@ -167,9 +176,13 @@ try {
   for (const task of stats.longtasks.slice(0, 8)) {
     console.log(`  ${String(task.start).padStart(6)} ms  ${String(task.duration).padStart(4)} ms  ${task.attribution}`)
   }
+  const dropped = stats.frames === 0 ? 0 : (stats.over20 / stats.frames) * 100
   console.log(
     `\nframes (reference only, see the note in the header): ${stats.frames}  mean ${stats.gapMean} ms  ` +
-      `median ${stats.gapMedian} ms  p95 ${stats.gapP95} ms  max ${stats.gapMax} ms  >20 ms: ${stats.over20}`,
+      `median ${stats.gapMedian} ms  p95 ${stats.gapP95} ms  max ${stats.gapMax} ms`,
+  )
+  console.log(
+    `dropped-frame rate (>20 ms gaps): ${stats.over20} frames = ${dropped.toFixed(2)} % of ${stats.frames}`,
   )
   console.log(`countdown textContent writes: ${stats.countWrites}`)
   console.log(`\nCPU profile self time (total sampled ${Math.round(profiled / 1000)} ms) — top frames:`)

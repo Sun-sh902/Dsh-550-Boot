@@ -126,6 +126,18 @@ const HOST_CSS = `
    ported vignette (z-index 899) and scanlines paint OVER the logo. In the
    original page #boot was a direct child of body and nothing wrapped it. */
 .dsh550c-stage{height:100%}
+/* 550W full: retire the four workbench groups separately, then the backdrop.
+   Simple / skip keep the original 620 ms teardown and 550C is unchanged. */
+:host([data-variant="550w"][data-mode="full"].dsh550w-complete.dsh550c-out){transition:opacity 420ms ease 2100ms}
+:host([data-variant="550w"].dsh550w-complete.dsh550c-out) .dsh550c-stage{opacity:1;transition:none}
+:host(.dsh550w-complete.dsh550c-out) #app #w-engine,
+:host(.dsh550w-complete.dsh550c-out) #app #hud-top,
+:host(.dsh550w-complete.dsh550c-out) #app #hud-bot{opacity:0;transition:opacity 1.5s linear}
+:host(.dsh550w-complete.dsh550c-out) #app #w-term{opacity:0;transition:opacity 1.5s linear .18s}
+:host(.dsh550w-complete.dsh550c-out) #app #w-bus{opacity:0;transition:opacity 1.5s linear .36s}
+:host(.dsh550w-complete.dsh550c-out) #app .ly-map,
+:host(.dsh550w-complete.dsh550c-out) #app .labs{opacity:0;transition:opacity 1.5s linear .54s}
+:host(.dsh550w-complete.dsh550c-out) .w-final.show{opacity:0;transition:opacity 1.8s linear}
 `
 
 /** The General-settings row sheet; DSH tokens so it matches either theme. */
@@ -443,7 +455,8 @@ function mountOverlay(force) {
       record.watchdog = null
     }
     host.classList.add('dsh550c-out')
-    record.fadeTimer = window.setTimeout(dispose, FADE_MS + 40)
+    const gradual = host.classList.contains('dsh550w-complete')
+    record.fadeTimer = window.setTimeout(dispose, (gradual ? 2520 : FADE_MS) + 40)
   }
   record.dispose = dispose
 
@@ -496,7 +509,10 @@ function mountOverlay(force) {
     record.show = variant.show(stage, { mode: mode, cancelled: CANCELLED })
     host.addEventListener('click', skip)
     window.addEventListener('keydown', onKey, true)
-    record.show.start().then(finish, finish)
+    record.show.start().then(() => {
+      if (variant.id === '550w' && mode === 'full') host.classList.add('dsh550w-complete')
+      finish()
+    }, finish)
     // Last statement of the same task that put the overlay on screen: the host
     // half's first frame and this shadow root swap inside one paint.
     endFirstFrame()
@@ -661,6 +677,10 @@ function VariantRow() {
   }, [])
 
   const selected = entries.filter((entry) => entry.id === variant)[0] ?? entries[0]
+  // Spelled out from the entries rather than hard-coded: the sentence has to stop
+  // claiming a machine is unfinished the moment it isn't. (550W left this list
+  // when it got a timeline of its own; 550A is still on it.)
+  const pending = entries.filter((entry) => entry.status === 'wip').map((entry) => entry.label)
 
   return React.createElement(
     'div',
@@ -672,7 +692,10 @@ function VariantRow() {
       React.createElement(
         'div',
         { className: 'dsh550c-row-desc' },
-        '选哪台机器开机。550C 是原作；550W 与 550A 的片头仍在开发中，点一下就会播「正在开发」占位。',
+        '选哪台机器开机。' +
+          (pending.length === 0
+            ? '三台机器各有自己的片头。'
+            : `未实装的机型（${pending.join(' / ')}）点一下会播「正在开发」占位。`),
       ),
     ),
     React.createElement(

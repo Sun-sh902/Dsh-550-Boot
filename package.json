@@ -1,7 +1,7 @@
 {
-  "name": "dsh-550c-boot",
-  "version": "0.1.4",
-  "description": "550C 开机动画：启动 DSH 时播放 550C 片头，简易模式只播 logo 加载动画，完整模式播完整的覆写流程；通用设置里可切换或关闭。",
+  "name": "dsh-550-boot",
+  "version": "0.1.0",
+  "description": "DSH 开机动画：550C 上游片头、550W 终端工作台（完整档 15.45 秒 / 简易档 3.05 秒）与 550A 开发中占位；通用设置可切换机型、档位、配色或关闭。",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -28,15 +28,20 @@
       "name": "Voidpoket",
       "url": "https://github.com/Voidpoket",
       "comment": "550C 片头动画与 HTML 源码（assets/550C-source.html）"
+    },
+    {
+      "name": "Sun-sh902",
+      "url": "https://github.com/Sun-sh902",
+      "comment": "550W 机型、550A 占位、终端工作台版式与构建/验证工具改造"
     }
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yannicksong0106/dsh-550c-boot.git"
+    "url": "git+https://github.com/Sun-sh902/Dsh-550-Boot.git"
   },
-  "homepage": "https://github.com/yannicksong0106/dsh-550c-boot#readme",
+  "homepage": "https://github.com/Sun-sh902/Dsh-550-Boot#readme",
   "bugs": {
-    "url": "https://github.com/yannicksong0106/dsh-550c-boot/issues"
+    "url": "https://github.com/Sun-sh902/Dsh-550-Boot/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -129,6 +134,8 @@
     "measure:perf": "node tools/measure-perf.mjs",
     "verify:reduced-motion": "node tools/verify-reduced-motion.mjs",
     "verify:variant-bg": "node tools/verify-variant-bg.mjs",
+    "verify:variant-row": "node tools/verify-variant-row.mjs",
+    "probe:550w": "node tools/probe-550w.mjs",
     "verify:skip": "node tools/verify-skip.mjs",
     "prepublishOnly": "node scripts/extract.mjs && node scripts/build.mjs && node --check lib/client.js && node --check lib/index.js"
   },

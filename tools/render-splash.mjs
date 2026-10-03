@@ -16,13 +16,16 @@
  * Usage:
  *   npm run render:splash
  *   node tools/render-splash.mjs --shots 1500,7000,12000 --mode full
+ *   node tools/render-splash.mjs --viewport 1920x1080 --shots 15800
+ *   node tools/render-splash.mjs --reduced --shots 19000          # reduced-motion look
  *   node tools/render-splash.mjs --variant 550a --scheme cyan --shots 1200
  *   node tools/render-splash.mjs --escape 3000 --shots 3600     # the skip path
  *   node tools/render-splash.mjs --client /tmp/other/lib/client.js --out /tmp/shots
  *
- * `--variant` takes any registered machine. 550W and 550A have no timeline of
- * their own yet: they play the ~2.2 s 「正在开发」 placeholder (see
- * src/variants/wip/index.js), so shoot them inside that window.
+ * `--variant` takes any registered machine. 550W boots its own opening (3a:
+ * roughly 3.05 s — the wordmark write-on, then the overlay fades). 550A still
+ * plays the ~2.2 s 「正在开发」 placeholder (src/variants/wip/index.js), so shoot
+ * it inside that window.
  */
 import { spawn } from 'node:child_process'
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -56,6 +59,8 @@ const mode = typeof opt.mode === 'string' ? opt.mode : null
 const variant = typeof opt.variant === 'string' ? opt.variant : null
 const scheme = typeof opt.scheme === 'string' ? opt.scheme : null
 const escapeAt = typeof opt.escape === 'string' ? Number(opt.escape) : null
+const viewport = typeof opt.viewport === 'string' ? opt.viewport.split('x').map(Number) : null
+const reduced = opt.reduced === true
 const port = Number(opt.port ?? 9223)
 const MODE_KEY = 'dsh-550c-boot:mode'
 const VARIANT_KEY = 'dsh-550c-boot:variant'
@@ -206,6 +211,23 @@ try {
   session = await connect(page.webSocketDebuggerUrl)
   await session.send('Page.enable')
   await session.send('Runtime.enable')
+  // The Chrome window is 1280×900 (the harness's launch size, minus chrome), which
+  // is the real-window look. `--viewport WxH` pins the CSS viewport instead, for
+  // the 16:9 contact sheets the film's own layout is specified at.
+  if (viewport !== null) {
+    await session.send('Emulation.setDeviceMetricsOverride', {
+      width: viewport[0],
+      height: viewport[1],
+      deviceScaleFactor: 1,
+      mobile: false,
+    })
+  }
+  if (reduced) {
+    await session.send('Emulation.setEmulatedMedia', {
+      media: '',
+      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+    })
+  }
   await session.send('Page.addScriptToEvaluateOnNewDocument', {
     source: `try {
       ${mode === null ? `localStorage.removeItem(${JSON.stringify(MODE_KEY)})` : `localStorage.setItem(${JSON.stringify(MODE_KEY)}, ${JSON.stringify(mode)})`};

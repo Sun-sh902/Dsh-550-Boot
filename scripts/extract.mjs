@@ -20,6 +20,13 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  assertTemplateMatches550C,
+  assertSharedTimelineMatches550C,
+  fillBootTemplate,
+  sharedBootSource,
+  wordmarkBodyOf,
+} from './boot-shared.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '..')
@@ -280,4 +287,35 @@ for (const [file, text] of [
 // Report the shape so a rewrite that silently stops matching is visible.
 process.stdout.write(
   `extract: css=${css.length} boot=${bootMarkup.length} app=${appMarkup.length} js=${js.length}\n`,
+)
+
+// ── shared boot module: 550C's opening apparatus + the traced 550W wordmark ───
+//
+// 550W starts from `assets/boot-template.html` — 550C's own `#boot` markup with
+// the contents of `<g id="logo">` cut out — and from the master-traced wordmark
+// in `assets/550w-wordmark.svg`. The assertion below is the load-bearing one and
+// it runs on every extract: fill the hole with 550C's OWN logo contents and the
+// result must equal 550C's ported BOOT_MARKUP byte for byte. Edit one byte of the
+// template and this exits 1. See scripts/boot-shared.mjs for what that does and
+// does not prove (it proves the apparatus, not the wordmark: 550W's mark is the
+// master's, deliberately — docs/PLAN-550w.md §4).
+const sharedTemplate = readFileSync(resolve(root, 'assets/boot-template.html'), 'utf8')
+const wordmarkArt = readFileSync(resolve(root, 'assets/550w-wordmark.svg'), 'utf8')
+assertTemplateMatches550C(sharedTemplate, bootMarkup)
+const playBootBody = /function playBoot\(\)\{([\s\S]*?)\n\}/.exec(js)
+must(playBootBody !== null, 'the ported script has no playBoot() to compare the shared timeline against')
+assertSharedTimelineMatches550C(playBootBody[1])
+const bootMarkup550W = fillBootTemplate(sharedTemplate, wordmarkBodyOf(wordmarkArt))
+must(!bootMarkup550W.includes('<!--'), 'the filled 550W markup still contains an HTML comment')
+must(
+  /<g id="logo"[\s\S]*<\/g>/.test(bootMarkup550W),
+  'the filled 550W markup has no <g id="logo">',
+)
+
+const sharedOut = sharedBootSource(bootMarkup550W)
+mkdirSync(resolve(root, 'src/variants/shared'), { recursive: true })
+writeFileSync(resolve(root, 'src/variants/shared/boot.js'), sharedOut)
+process.stdout.write(
+  `extract: wrote src/variants/shared/boot.js (${sharedOut.length} chars; 550W wordmark ` +
+    `${(bootMarkup550W.match(/<path /g) ?? []).length} paths) — 550C round-trip + shared-timeline assertions passed\n`,
 )

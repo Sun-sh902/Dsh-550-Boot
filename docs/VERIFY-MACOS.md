@@ -13,8 +13,8 @@
 ```sh
 # 一次性：让 profile 指向源码而不是 git 包，之后改完重启就生效
 /Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh \
-  plugin --profile desktop add link:$HOME/dev/dsh-550-Boot
-ls -l ~/.dsh/profiles/desktop/node_modules/dsh-550c-boot   # 必须是 symlink
+  plugin --profile desktop add "link:$HOME/dev/dsh-550-Boot"
+ls -l ~/.dsh/profiles/desktop/node_modules/dsh-550-boot   # 必须是 symlink
 ```
 
 之后每次改源码：**退出 DeepSeek Harness → 重新打开 → `Ctrl+Shift+R`**（客户端 bundle 的 `rev` 是
@@ -48,11 +48,11 @@ ls -l ~/.dsh/profiles/desktop/node_modules/dsh-550c-boot   # 必须是 symlink
 
 ```sh
 # 看 profile 里到底装的什么
-ls -l ~/.dsh/profiles/desktop/node_modules/dsh-550c-boot
+ls -l ~/.dsh/profiles/desktop/node_modules/dsh-550-boot
 
 # 退回 git 包（需要用发布版时；包不在 npm 上，只能走 github:）
 /Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh \
-  plugin --profile desktop add github:yannicksong0106/dsh-550c-boot
+  plugin --profile desktop add github:Sun-sh902/Dsh-550-Boot
 
-# 注意：退回 git 包 = 丢掉本地改动（默认档回到 'simple' 等），见 LOCAL-CHANGES.md
+# 注意：退回 git 包会使用本仓库已发布版本，不会保留未提交的本地改动。
 ```

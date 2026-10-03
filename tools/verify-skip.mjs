@@ -11,8 +11,9 @@
  *   - focus is not left inside the hidden splash
  *   - the page is interactive again (a click on the page's own button lands)
  *
- * Timestamps are per machine: 550C's full run is ~11.5 s, while 550W and 550A
- * play a ~2.2 s 「正在开发」 placeholder — pick `--at` inside the run you mean.
+ * Timestamps are per machine: 550C's full run is ~11.5 s, 550W's 3a opening is
+ * ~3.05 s, and 550A plays a ~2.2 s 「正在开发」 placeholder — pick `--at` inside
+ * the run you mean.
  *
  * Usage:
  *   npm run verify:skip

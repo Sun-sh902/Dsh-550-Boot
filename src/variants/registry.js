@@ -44,8 +44,15 @@ const DEFAULT_VARIANT = '550c'
  * A 「正在开发」 placeholder needs an entry here as much as a finished machine
  * does: the cover is painted before the shell exists, so it cannot know whether a
  * timeline is coming, and the placeholder paints its own backdrop this colour.
+ *
+ * This table and the machine's own stylesheet have to agree, and the agreement is
+ * not cosmetic: mountOverlay() inlines THIS value as `--bg` on the overlay host,
+ * so an inline that disagrees with the sheet silently wins and the machine plays
+ * on the wrong ground. 550W shipped exactly that bug (`#04070a` here against
+ * `--bg:#030303` in its sheet — a blue-black first frame for the whole run);
+ * scripts/build.mjs now asserts the two are equal.
  */
-const VARIANT_BG = { '550c': '#050403', '550w': '#04070a', '550a': '#0a0703' }
+const VARIANT_BG = { '550c': '#050403', '550w': '#030303', '550a': '#0a0703' }
 
 /** Every machine that can be played, by id (see src/variants/<id>/index.js). */
 const VARIANTS = { '550c': VARIANT_550C, '550w': VARIANT_550W, '550a': VARIANT_550A }

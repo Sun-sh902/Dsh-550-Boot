@@ -27,13 +27,27 @@ import { Script } from 'node:vm'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '..')
-const PLUGIN_ID = 'dsh-550c-boot'
+const packageName = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')).name
+const patch = readFileSync(resolve(root, 'cordis.patch.yml'), 'utf8')
+if (!patch.includes(`      name: ${packageName}\n`)) {
+  throw new Error('build: cordis.patch.yml package name must match package.json')
+}
+const PLUGIN_ID = packageName
 const PARTS = [
   'src/variants/550c/assets.js',
   'src/variants/550c/show.js',
   'src/variants/550c/enhance.js',
   'src/variants/550c/index.js',
   'src/variants/wip/index.js',
+  // 550C's opening apparatus + 550W's traced wordmark, parameterised. It has to
+  // sit ahead of src/variants/550w/index.js: that entry reads BOOT_MARKUP_550W at
+  // module scope, and a missing shared module is silent at runtime (the machine
+  // boots with `boot: undefined`) — the identifier check below is what makes it
+  // loud instead.
+  'src/variants/shared/boot.js',
+  'src/variants/550w/assets.js',
+  'src/variants/550w/show.js',
+  'src/variants/550w/enhance.js',
   'src/variants/550w/index.js',
   'src/variants/550a/index.js',
   'src/variants/registry.js',
@@ -115,9 +129,82 @@ const orphan = Object.keys(hostBg).filter((id) => !variantIds.includes(id))
 if (orphan.length > 0) {
   throw new Error(`build: VARIANT_BG has ${orphan.join(', ')} but no such machine is registered`)
 }
+
+// A machine's cover colour and its own stylesheet must agree. mountOverlay()
+// inlines VARIANT_BG[id] as `--bg` on the overlay host, so the inline always
+// beats the sheet's `:host{--bg:…}`: if the two drift, the machine plays its
+// whole run on the wrong ground and nothing about the CSS says so. 550W shipped
+// that bug — `#04070a` in the tables against `--bg:#030303` in the sheet, a
+// blue-black first frame — which is why this check exists.
+//
+// The value read is the machine's own default `--bg`, i.e. the one outside any
+// `:host([data-scheme=…])` override. A machine whose sheet declares no `--bg`
+// (the 「正在开发」 placeholder, which paints `var(--bg, …)` and takes the colour
+// purely from the inline) is reported and skipped rather than failed.
+/**
+ * A machine's stylesheet as text. Two shapes exist in the tree: the ported 550C
+ * sheet is a JSON string (extract.mjs emits `JSON.stringify(css)`), the
+ * hand-written ones are template literals — so both are read here rather than
+ * assuming one.
+ */
+const cssSourceOf = (name) => {
+  for (const file of PARTS) {
+    const source = read(file)
+    const at = new RegExp(`const ${name} = `).exec(source)
+    if (at === null) continue
+    const start = at.index + at[0].length
+    const quote = source[start]
+    if (quote === '`') {
+      const end = source.indexOf('`', start + 1)
+      if (end === -1) throw new Error(`build: unterminated template literal for ${name} in ${file}`)
+      return { file, text: source.slice(start + 1, end) }
+    }
+    if (quote === '"') {
+      let i = start + 1
+      while (i < source.length) {
+        if (source[i] === '\\') i += 2
+        else if (source[i] === '"') break
+        else i += 1
+      }
+      return { file, text: JSON.parse(source.slice(start, i + 1)) }
+    }
+    throw new Error(`build: ${name} in ${file} is neither a template literal nor a JSON string`)
+  }
+  throw new Error(`build: no const ${name} = … in any source file`)
+}
+/** The style constant a machine's own entry names: `id: '550w', … css: CSS_550W`. */
+const cssConstantOf = (id) => {
+  for (const file of PARTS) {
+    const match = new RegExp(`id: '${id}'[\\s\\S]*?css: ([A-Z_0-9]+)`).exec(read(file))
+    if (match !== null) return match[1]
+  }
+  throw new Error(`build: no entry for ${id} names a css constant`)
+}
+const bgInCss = (text) => {
+  const match = /(?:^|[;{\s])--bg:\s*(#[0-9a-fA-F]{3,8})\s*[;}]/.exec(text)
+  return match === null ? null : match[1]
+}
+const bgNotes = []
+for (const id of variantIds) {
+  const cssName = cssConstantOf(id)
+  const { file, text } = cssSourceOf(cssName)
+  const declared = bgInCss(text)
+  if (declared === null) {
+    bgNotes.push(`build: ${id} declares no --bg in ${file} (${cssName}); the cover colour is the inline only — not checked`)
+    continue
+  }
+  if (declared !== hostBg[id]) {
+    throw new Error(
+      `build: VARIANT_BG["${id}"] is ${hostBg[id]} but ${file} declares --bg:${declared} — ` +
+        'the inline wins in mountOverlay(), so the machine would play on the wrong ground',
+    )
+  }
+  bgNotes.push(`build: ${id} cover ${hostBg[id]} === ${cssName} --bg`)
+}
 process.stdout.write(
   `build: host/client contracts ok (MODE_KEY, FIRST_FRAME_GLOBAL, VARIANT_KEY, VARIANT_BG ×${variantIds.length}, "off")\n`,
 )
+for (const note of bgNotes) process.stdout.write(`${note}\n`)
 
 const body = PARTS.map((file) => `//#region ${file}\n${read(file).trimEnd()}\n//#endregion`).join('\n\n')
 
@@ -140,6 +227,37 @@ ${body
 // same trap the reference plugin documents for backticks in its CSS.
 if (/<\/script/i.test(out)) throw new Error('build: output contains </script and would truncate in the browser')
 if (/<!--/.test(out)) throw new Error('build: output contains <!-- (HTML comment open) and is unsafe in a script block')
+
+// Every window a machine can open is keyed by `data-p`, and show.js builds its
+// lookup Map from those keys — two windows sharing one tag means the second
+// silently replaces the first and one of them becomes unopenable. 550W shipped
+// exactly that (`RELAY LINK` and `PRIVILEGE ESCALATION` both tagged `link`, so a3
+// had no link step and `priv` was a dead key), which is why this is asserted now.
+const popupTags = [...read('src/variants/550w/assets.js').matchAll(/<div class="popup" data-p="([^"]+)"/g)].map(
+  (match) => match[1],
+)
+if (popupTags.length === 0) throw new Error('build: 550W declares no windows at all')
+const duplicateTags = popupTags.filter((tag, index) => popupTags.indexOf(tag) !== index)
+if (duplicateTags.length > 0) {
+  throw new Error(`build: 550W tags ${[...new Set(duplicateTags)].join(', ')} twice — a window would be unopenable`)
+}
+process.stdout.write(`build: 550W windows ok (${popupTags.join(', ')} — no duplicate data-p)\n`)
+
+// A machine can be fully written and still boot the placeholder: the entry has
+// to be wired to everything the machine owns, and the shared module has to be
+// concatenated BEFORE the entry that reads it at module scope. Both failures are
+// silent at runtime — the splash just plays somebody else's screen — so the
+// bundle is asked for the machine's four identifiers by name.
+const REQUIRED_BUNDLE_IDENTIFIERS = ['BOOT_MARKUP_550W', 'CSS_550W', 'createShow550W', 'enhanceShow550W']
+const missingIdentifiers = REQUIRED_BUNDLE_IDENTIFIERS.filter(
+  (name) => !new RegExp(`(?:const|function) ${name}\\b`).test(out),
+)
+if (missingIdentifiers.length > 0) {
+  throw new Error(
+    `build: lib/client.js defines no ${missingIdentifiers.join(', ')} — 550W would boot with a missing ` +
+      'surface (is src/variants/shared/boot.js still in PARTS, ahead of src/variants/550w/index.js?)',
+  )
+}
 
 // Parse the bundle before shipping it. The usual way this file goes wrong is a
 // stray backtick inside a CSS template literal — the sheet is one template

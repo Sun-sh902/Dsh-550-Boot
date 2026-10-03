@@ -1,0 +1,16 @@
+<div id="boot">
+  <div class="boot-stage">
+    <svg viewBox="0 0 800 230" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="despike" x="-10%" y="-10%" width="120%" height="120%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="b"/>
+          <feComponentTransfer in="b"><feFuncA type="linear" slope="5" intercept="-2"/></feComponentTransfer>
+        </filter>
+      </defs>
+      <g id="logo" filter="url(#despike)">
+        <!--550W-WORDMARK-->
+      </g>
+    </svg>
+    <div class="boot-text" id="bootText">550C SYSTEM BOOT<span class="cursor"></span></div>
+  </div>
+</div>

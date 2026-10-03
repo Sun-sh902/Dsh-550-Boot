@@ -1,13 +1,34 @@
-# dsh-550c-boot
+# Dsh-550-Boot
 
 [English](README.en.md) | [中文](README.md)
 
-**A full-screen 550C boot intro for DeepSeek Harness (DSH).**
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+
+## Sources and acknowledgements
+
+This project is derived from **Ziyang Song ([@yannicksong0106](https://github.com/yannicksong0106))**'s
+open-source **[dsh-550c-boot](https://github.com/yannicksong0106/dsh-550c-boot)** (MIT licensed) —
+**the 550C boot animation comes from that project**; its original HTML was provided by
+**Voidpoket ([@Voidpoket](https://github.com/Voidpoket))**.
+This repository adds the 550W and 550A variants, a terminal workbench layout, and the corresponding
+build and verification scaffolding. Thanks to both authors.
+
+The additions are by **Sun-sh902** ([@Sun-sh902](https://github.com/Sun-sh902)); 550A remains a work-in-progress placeholder.
+
+## Unofficial fan-work disclaimer
+
+This is an unofficial fan work, unaffiliated with *The Wandering Earth* film series, its rights holders,
+or DeepSeek. Film names and related marks belong to their respective owners. The 550W wordmark in this
+repository is a vector manually traced from film imagery, for learning and demonstration only;
+it is not an original wordmark. If a rights holder objects, please open an issue and we will promptly
+adjust or remove it.
+
+**550C / 550W full-screen boot intros and a 550A placeholder for DeepSeek Harness (DSH).**
 It plays on every client start, fades out when it finishes, and reveals the real UI.
 
 ![Full mode: 47 nodes rewritten one by one](docs/preview-full.png)
 
-- 🎬 **Two cuts**: a 4-second simple cut (logo stroke by stroke) and a 16-second full rewrite, or off
+- 🎬 **Independent variants and cuts**: the upstream 550C sequence, a 3.05-second simple / 15.45-second full 550W cut, a 550A placeholder, or off
 - ⏭️ **Skippable**: click the screen or press `Esc`
 - 🖥️ **Covers DSH's own boot card**: the host half injects the opening frame while the document is still
   parsing, so `HARNESS / Loading plugins…` never shows
@@ -17,11 +38,11 @@ It plays on every client start, fades out when it finishes, and reveals the real
 ## Install
 
 ```sh
-# from GitHub (recommended; build output is committed, no install-time scripts)
-dsh plugin --profile web add github:yannicksong0106/dsh-550c-boot
+# GitHub installation only; committed build output, no install-time scripts
+dsh plugin --profile web add github:Sun-sh902/Dsh-550-Boot
 
-# or the prebuilt tarball (release asset; the asset name is version-free, so `latest` never rots)
-dsh plugin --profile web add https://github.com/yannicksong0106/dsh-550c-boot/releases/latest/download/dsh-550c-boot.tgz
+# Desktop profile, using the same GitHub source
+dsh plugin --profile desktop add github:Sun-sh902/Dsh-550-Boot
 ```
 
 **Restart DSH once** after installing (bundles are assembled at startup). After an upgrade, hard-refresh
@@ -31,15 +52,18 @@ URL is a process nonce, so a plain F5 keeps the first copy it ever fetched.
 ## Usage
 
 Settings → General → **550C 开机动画**. A **Preview** button replays it immediately.
+Choose 550C / 550W / 550A and a palette on the same page. Existing settings ids and storage keys remain compatible.
 
 | Mode | Length | Content |
 |---|---|---|
-| **Simple** (default) | ~4 s | the 550C logo drawn stroke by stroke |
-| **Full** | ~16 s | logo → base station takeover → 47 nodes rewritten one by one → `SYSTEM IS REWRITTEN` |
+| **Simple** | 550W 3.05 s; 550C uses its upstream timeline | logo drawn stroke by stroke |
+| **Full** (this repository's default) | 550W 15.45 s; 550C uses its upstream timeline | 550C rewrite / 550W terminal workbench, countdown, engine plumes and successful access |
 | **Off** | — | nothing is painted at all |
 
-Palettes: **amber** (default, the original CRT palette — not a single token is overridden), green (P1),
-cyan, white (P4). Preferences live in `localStorage` (`dsh-550c-boot:mode`).
+Palettes: **amber** (default, no override: upstream amber for 550C, neutral/red for 550W), green (P1),
+cyan, white (P4). The 550W ending stays 550C amber; pale blue is confined to its two engine plumes.
+Preferences live in `localStorage` (`dsh-550c-boot:mode`). Retirement time is separate from playback.
+With reduced motion, an unset mode defaults to Simple; 550W plumes are static and the white flash is disabled.
 
 ![Simple mode](docs/preview-simple.png)
 ![Cyan palette](docs/preview-cyan.png)
@@ -62,7 +86,7 @@ cyan, white (P4). Preferences live in `localStorage` (`dsh-550c-boot:mode`).
 | [docs/ENHANCEMENTS.md](docs/ENHANCEMENTS.md) | the enhancement layer: monospace stack, cell-based progress bar, real clock stamps, firmware footer and CRC32 |
 | [docs/DESKTOP-CHROME.md](docs/DESKTOP-CHROME.md) | the native caption buttons: making room, repainting them, the macOS drag guard |
 | [docs/VERIFICATION.md](docs/VERIFICATION.md) | build and verification: harness probes, CDP screenshots of the real GUI |
-| [docs/PUBLISHING.md](docs/PUBLISHING.md) | distribution: GitHub install / community registries / npm |
+| [docs/PUBLISHING.md](docs/PUBLISHING.md) | GitHub-only distribution, reproducible builds and attribution checks |
 
 ## Credits
 
@@ -70,4 +94,4 @@ The animation and its HTML source were provided by **Voidpoket** ([@Voidpoket](h
 the plugin engineering and port are by **Ziyang Song** ([@yannicksong0106](https://github.com/yannicksong0106)).
 See [CREDITS.md](CREDITS.md).
 
-[MIT](LICENSE) © 2026 Ziyang Song
+[MIT](LICENSE) © 2026 Ziyang Song; © 2026 Sun-sh902 (repository modifications). See [CREDITS.md](CREDITS.md) for all three contributors.
